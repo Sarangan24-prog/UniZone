@@ -1,0 +1,16 @@
+{
+  "name": "unizone-documentation-pdf-generator",
+  "version": "1.0.0",
+  "description": "PDF generator for UniZone Complete Documentation",
+  "scripts": {
+    "generate-pdf": "node generate_pdf.js",
+    "install-deps": "npm install -g markdown-pdf"
+  },
+  "keywords": [
+    "pdf",
+    "markdown",
+    "documentation"
+  ],
+  "author": "",
+  "license": "ISC"
+}
