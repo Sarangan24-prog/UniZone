@@ -40,3 +40,4 @@ const courseSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('Course', courseSchema);
+//Course module updated by Mmber 1
