@@ -28,6 +28,7 @@ exports.register = async (req, res) => {
     }
 
     // In production, validate roleCreateKey against environment variable
+
     if ((role === 'admin' || role === 'staff') && roleCreateKey !== process.env.ROLE_CREATE_KEY) {
       return res.status(400).json({ message: 'Invalid role create key' });
     }
