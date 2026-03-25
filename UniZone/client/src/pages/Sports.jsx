@@ -27,7 +27,7 @@ export default function Sports() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [err, setErr] = useState("");
-  const [form, setForm] = useState({ name:"", maxPlayers:30, description:"" });
+  const [form, setForm] = useState({ name: "", maxPlayers: 30, description: "" });
 
   const load = async () => {
     setLoading(true);
@@ -38,7 +38,7 @@ export default function Sports() {
 
   useEffect(() => { load(); }, []);
 
-  const onCreate = () => { setForm({ name:"", maxPlayers:30, description:"" }); setEditing(null); setErr(""); setOpen(true); };
+  const onCreate = () => { setForm({ name: "", maxPlayers: 30, description: "" }); setEditing(null); setErr(""); setOpen(true); };
 
   const onEdit = (row) => {
     setEditing(row);
@@ -65,8 +65,25 @@ export default function Sports() {
     load();
   };
 
-  const join = async (id) => { await api.post(`/sports/${id}/join`); load(); };
-  const leave = async (id) => { await api.post(`/sports/${id}/leave`); load(); };
+  const join = async (id) => {
+    try {
+      setErr("");
+      await api.post(`/sports/${id}/join`);
+      load();
+    } catch (e) {
+      setErr(e.response?.data?.message || "Join failed");
+    }
+  };
+
+  const leave = async (id) => {
+    try {
+      setErr("");
+      await api.post(`/sports/${id}/leave`);
+      load();
+    } catch (e) {
+      setErr(e.response?.data?.message || "Leave failed");
+    }
+  };
 
   const filtered = useMemo(() => {
     let out = [...items];
@@ -86,11 +103,11 @@ export default function Sports() {
       });
     }
 
-    out.sort((a,b) => {
+    out.sort((a, b) => {
       if (sort === "created_desc") return new Date(b.createdAt) - new Date(a.createdAt);
       if (sort === "created_asc") return new Date(a.createdAt) - new Date(b.createdAt);
-      if (sort === "name_asc") return (a.name||"").localeCompare(b.name||"");
-      if (sort === "name_desc") return (b.name||"").localeCompare(a.name||"");
+      if (sort === "name_asc") return (a.name || "").localeCompare(b.name || "");
+      if (sort === "name_desc") return (b.name || "").localeCompare(a.name || "");
       return 0;
     });
 
@@ -101,22 +118,24 @@ export default function Sports() {
     { key: "name", header: "Sport" },
     { key: "maxPlayers", header: "Max Players" },
     { key: "players", header: "Current", render: (r) => `${r.players?.length || 0}/${r.maxPlayers || 0}` },
-    { key: "actions", header: "Actions", render: (r) => (
-      <div className="flex flex-wrap gap-2">
-        {isStudent && (
-          <>
-            <Button onClick={()=>join(r._id)}>Join</Button>
-            <Button variant="outline" onClick={()=>leave(r._id)}>Leave</Button>
-          </>
-        )}
-        {isStaff && (
-          <>
-            <Button variant="outline" onClick={()=>onEdit(r)}>Edit</Button>
-            <Button variant="danger" onClick={()=>del(r._id)}>Delete</Button>
-          </>
-        )}
-      </div>
-    ) }
+    {
+      key: "actions", header: "Actions", render: (r) => (
+        <div className="flex flex-wrap gap-2">
+          {(isStudent || isStaff) && (
+            <>
+              <Button onClick={() => join(r._id)}>Join</Button>
+              <Button variant="outline" onClick={() => leave(r._id)}>Leave</Button>
+            </>
+          )}
+          {isStaff && (
+            <>
+              <Button variant="outline" onClick={() => onEdit(r)}>Edit</Button>
+              <Button variant="danger" onClick={() => del(r._id)}>Delete</Button>
+            </>
+          )}
+        </div>
+      )
+    }
   ];
 
   return (
@@ -127,49 +146,54 @@ export default function Sports() {
     >
       <Card>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Input label="Search (name)" value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Cricket, Football..." />
-          <Select label="Team Size" value={size} onChange={(e)=>setSize(e.target.value)}>
+          <Input label="Search (name)" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cricket, Football..." />
+          <Select label="Team Size" value={size} onChange={(e) => setSize(e.target.value)}>
             <option value="all">All</option>
             <option value="small">Small (≤ 15)</option>
             <option value="medium">Medium (16–30)</option>
             <option value="large">Large (30+)</option>
           </Select>
-          <Select label="Sort" value={sort} onChange={(e)=>setSort(e.target.value)}>
+          <Select label="Sort" value={sort} onChange={(e) => setSort(e.target.value)}>
             <option value="created_desc">Newest</option>
             <option value="created_asc">Oldest</option>
             <option value="name_asc">Name A→Z</option>
             <option value="name_desc">Name Z→A</option>
           </Select>
         </div>
+        {err && !open && (
+          <div className="mt-3 rounded-xl bg-red-50 border border-red-200 p-3">
+            <p className="text-sm font-medium text-red-700">{err}</p>
+          </div>
+        )}
       </Card>
 
       <div className="mt-4">
-        {loading ? <Loading/> : filtered.length === 0 ? (
-          <EmptyState title="No sports found" subtitle="Try a different search or filter."/>
+        {loading ? <Loading /> : filtered.length === 0 ? (
+          <EmptyState title="No sports found" subtitle="Try a different search or filter." />
         ) : (
-          <Table columns={columns} rows={filtered}/>
+          <Table columns={columns} rows={filtered} />
         )}
       </div>
 
       <Modal
         open={open}
         title={editing ? "Edit Sport" : "Create Sport"}
-        onClose={()=>setOpen(false)}
+        onClose={() => setOpen(false)}
         footer={(
           <div className="space-y-3">
             {err && <div className="rounded-xl bg-red-50 border border-red-200 p-3"><p className="text-sm font-medium text-red-700">{err}</p></div>}
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={()=>setOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button onClick={save}>Save</Button>
             </div>
           </div>
         )}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <Input label="Sport Name" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})}/>
-          <Input label="Max Players" type="number" value={form.maxPlayers} onChange={(e)=>setForm({...form,maxPlayers:+e.target.value})}/>
+          <Input label="Sport Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <Input label="Max Players" type="number" value={form.maxPlayers} onChange={(e) => setForm({ ...form, maxPlayers: +e.target.value })} />
           <div className="sm:col-span-2">
-            <TextArea label="Description" rows={3} value={form.description} onChange={(e)=>setForm({...form,description:e.target.value})}/>
+            <TextArea label="Description" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
         </div>
       </Modal>

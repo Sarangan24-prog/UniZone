@@ -30,8 +30,8 @@ app.use('/api/services', serviceRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     message: 'UniZone API is running',
     timestamp: new Date().toISOString()
   });
