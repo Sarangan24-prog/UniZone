@@ -46,7 +46,7 @@ router.delete('/:id', authenticate, authorize('admin', 'staff'), async (req, res
 });
 
 // Join sport
-router.post('/:id/join', authenticate, authorize('student'), async (req, res) => {
+router.post('/:id/join', authenticate, authorize('student', 'admin', 'staff'), async (req, res) => {
   try {
     const sport = await Sport.findById(req.params.id);
     if (!sport) return res.status(404).json({ message: 'Sport not found' });
@@ -67,7 +67,7 @@ router.post('/:id/join', authenticate, authorize('student'), async (req, res) =>
 });
 
 // Leave sport
-router.post('/:id/leave', authenticate, authorize('student'), async (req, res) => {
+router.post('/:id/leave', authenticate, authorize('student', 'admin', 'staff'), async (req, res) => {
   try {
     const sport = await Sport.findById(req.params.id);
     if (!sport) return res.status(404).json({ message: 'Sport not found' });

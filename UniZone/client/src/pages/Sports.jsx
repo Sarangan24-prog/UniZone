@@ -14,23 +14,95 @@ import { useAuth } from "../auth/AuthContext";
 
 export default function Sports() {
   const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const isStaff = user?.role === "admin" || user?.role === "staff";
   const isStudent = user?.role === "student";
+  const showJoinLeave = isStudent; // only students/clients can Join/Leave, admin/staff do not
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [q, setQ] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
   const [size, setSize] = useState("all");
   const [sort, setSort] = useState("created_desc");
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [err, setErr] = useState("");
-  const [form, setForm] = useState({ name:"", maxPlayers:30, description:"" });
+  const [sportNameError, setSportNameError] = useState("");
+  const [maxPlayersError, setMaxPlayersError] = useState("");
+  const [joiningStates, setJoiningStates] = useState({});
+  const [joinErrors, setJoinErrors] = useState({});
+  const [form, setForm] = useState({ name: "", maxPlayers: 30, description: "" });
+
+  const normalizeSportName = (name) => (name || "").trim().replace(/\s+/g, " ");
+
+  const normalizeSearchInput = (value) => {
+    if (!value) return "";
+    let normalized = String(value).trim().replace(/\s+/g, " ");
+    if (normalized.length > 30) normalized = normalized.slice(0, 30);
+    return normalized;
+  };
+
+
+  const validateSportName = (name, sports, editingSportId = null) => {
+    const normalized = normalizeSportName(name);
+
+    if (!normalized) return "Sport name is required";
+    if (normalized.length < 3) return "Sport name must be at least 3 characters";
+    if (normalized.length > 30) return "Sport name must be at most 30 characters";
+    if (!/^[A-Za-z ]+$/.test(normalized)) return "Sport name can contain only letters and spaces";
+
+    const match = (sports || []).find((item) => {
+      if (!item?.name) return false;
+      if (editingSportId && item._id === editingSportId) return false;
+      return item.name.trim().toLowerCase() === normalized.toLowerCase();
+    });
+    if (match) return "Sport name already exists";
+
+    return "";
+  };
+
+  const validateMaxPlayers = (value, currentPlayers = 0) => {
+    const strValue = String(value || "").trim();
+
+    if (!strValue) return "Max players is required";
+    
+    const num = Number(strValue);
+    if (isNaN(num)) return "Max players must be a whole number";
+    if (!Number.isInteger(num)) return "Max players must be a whole number";
+    if (num < 1) return "Max players must be greater than 0";
+    if (num > 100) return "Max players cannot exceed 100";
+    if (editing && num < currentPlayers) return "Max players cannot be less than current players";
+
+    return "";
+  };
+
+  const canJoinSport = (sport) => {
+    if (!user) return false;
+    const currentPlayers = sport.players?.length || 0;
+    const isFull = currentPlayers >= (sport.maxPlayers || 0);
+    const alreadyJoined = (sport.players || []).some(p => p._id === user._id);
+    return !isFull && !alreadyJoined;
+  };
+
+  const getJoinButtonState = (sport) => {
+    const isJoining = joiningStates[sport._id] || false;
+    const alreadyJoined = (sport.players || []).some(p => p._id === user._id);
+    const currentPlayers = sport.players?.length || 0;
+    const isFull = currentPlayers >= (sport.maxPlayers || 0);
+
+    if (isJoining) return { disabled: true, text: "Joining..." };
+    if (alreadyJoined) return { disabled: true, text: "Joined" };
+    if (isFull) return { disabled: true, text: "Full" };
+    if (!user) return { disabled: true, text: "Join" };
+    return { disabled: false, text: "Join" };
+  };
 
   const load = async () => {
     setLoading(true);
+    setJoinErrors({});
     const res = await api.get("/sports");
     setItems(res.data);
     setLoading(false);
@@ -38,20 +110,78 @@ export default function Sports() {
 
   useEffect(() => { load(); }, []);
 
-  const onCreate = () => { setForm({ name:"", maxPlayers:30, description:"" }); setEditing(null); setErr(""); setOpen(true); };
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQ(normalizeSearchInput(q));
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [q]);
+
+
+  const onCreate = () => {
+    setForm({ name: "", maxPlayers: 30, description: "" });
+    setEditing(null);
+    setErr("");
+    setSportNameError("");
+    setMaxPlayersError("");
+    setOpen(true);
+  };
 
   const onEdit = (row) => {
     setEditing(row);
     setForm({ name: row.name || "", maxPlayers: row.maxPlayers || 30, description: row.description || "" });
     setErr("");
+    setSportNameError("");
+    setMaxPlayersError("");
     setOpen(true);
   };
 
+  const onSportNameChange = (value) => {
+    const updatedForm = { ...form, name: value };
+    setForm(updatedForm);
+    setSportNameError(validateSportName(value, items, editing?._id));
+  };
+
+  const onSportNameBlur = () => {
+    const normalized = normalizeSportName(form.name);
+    setForm({ ...form, name: normalized });
+    setSportNameError(validateSportName(normalized, items, editing?._id));
+  };
+
+  const onMaxPlayersChange = (value) => {
+    const currentPlayers = editing?.players?.length || 0;
+    setForm({ ...form, maxPlayers: value === "" ? "" : +value });
+    setMaxPlayersError(validateMaxPlayers(value, currentPlayers));
+  };
+
+  const onMaxPlayersBlur = () => {
+    const currentPlayers = editing?.players?.length || 0;
+    const strValue = String(form.maxPlayers || "").trim();
+    const num = isNaN(Number(strValue)) ? "" : Math.trunc(Number(strValue));
+    setForm({ ...form, maxPlayers: num });
+    setMaxPlayersError(validateMaxPlayers(num, currentPlayers));
+  };
+
   const save = async () => {
+    const normalized = normalizeSportName(form.name);
+    const validationErrorName = validateSportName(normalized, items, editing?._id);
+    const currentPlayers = editing?.players?.length || 0;
+    const validationErrorMaxPlayers = validateMaxPlayers(form.maxPlayers, currentPlayers);
+
+    if (validationErrorName) {
+      setSportNameError(validationErrorName);
+      return;
+    }
+    if (validationErrorMaxPlayers) {
+      setMaxPlayersError(validationErrorMaxPlayers);
+      return;
+    }
+
     try {
       setErr("");
-      if (editing) await api.put(`/sports/${editing._id}`, form);
-      else await api.post("/sports", form);
+      const payload = { ...form, name: normalized, maxPlayers: Math.trunc(form.maxPlayers) };
+      if (editing) await api.put(`/sports/${editing._id}`, payload);
+      else await api.post("/sports", payload);
       setOpen(false);
       load();
     } catch (e) {
@@ -65,15 +195,66 @@ export default function Sports() {
     load();
   };
 
-  const join = async (id) => { await api.post(`/sports/${id}/join`); load(); };
-  const leave = async (id) => { await api.post(`/sports/${id}/leave`); load(); };
+  const join = async (id) => {
+    const sport = items.find(s => s._id === id);
+    if (!sport) return;
+
+    if (!canJoinSport(sport)) {
+      setJoinErrors({ ...joinErrors, [id]: "Cannot join this sport" });
+      return;
+    }
+
+    try {
+      setJoinErrors({ ...joinErrors, [id]: "" });
+      setJoiningStates({ ...joiningStates, [id]: true });
+
+      // Optimistic UI update
+      const updatedItems = items.map(s =>
+        s._id === id
+          ? { ...s, players: [...(s.players || []), user] }
+          : s
+      );
+      setItems(updatedItems);
+
+      const res = await api.post(`/sports/${id}/join`);
+      
+      // Sync with backend response if available
+      if (res.data) {
+        const syncedItems = items.map(s =>
+          s._id === id ? res.data : s
+        );
+        setItems(syncedItems);
+      }
+    } catch (e) {
+      const errorMsg = e.response?.data?.message || "Join failed";
+      setJoinErrors({ ...joinErrors, [id]: errorMsg });
+      
+      // Revert optimistic update on error
+      load();
+    } finally {
+      setJoiningStates({ ...joiningStates, [id]: false });
+    }
+  };
+
+  const leave = async (id) => {
+    try {
+      setJoinErrors({ ...joinErrors, [id]: "" });
+      await api.post(`/sports/${id}/leave`);
+      load();
+    } catch (e) {
+      setJoinErrors({ ...joinErrors, [id]: e.response?.data?.message || "Leave failed" });
+    }
+  };
 
   const filtered = useMemo(() => {
     let out = [...items];
 
-    if (q.trim()) {
-      const qq = q.toLowerCase();
-      out = out.filter(x => (x.name || "").toLowerCase().includes(qq));
+    if (debouncedQ) {
+      const qq = debouncedQ.toLowerCase();
+      out = out.filter(x => {
+        const sportName = (x?.name || "").trim().toLowerCase();
+        return sportName.includes(qq);
+      });
     }
 
     if (size !== "all") {
@@ -86,37 +267,81 @@ export default function Sports() {
       });
     }
 
-    out.sort((a,b) => {
+    out.sort((a, b) => {
       if (sort === "created_desc") return new Date(b.createdAt) - new Date(a.createdAt);
       if (sort === "created_asc") return new Date(a.createdAt) - new Date(b.createdAt);
-      if (sort === "name_asc") return (a.name||"").localeCompare(b.name||"");
-      if (sort === "name_desc") return (b.name||"").localeCompare(a.name||"");
+      if (sort === "name_asc") return (a.name || "").localeCompare(b.name || "");
+      if (sort === "name_desc") return (b.name || "").localeCompare(a.name || "");
       return 0;
     });
 
     return out;
-  }, [items, q, size, sort]);
+  }, [items, debouncedQ, size, sort]);
+
+  const isSportNameValid = !validateSportName(form.name, items, editing?._id);
+  const sportNameBorderClass = sportNameError
+    ? "border-red-500 focus:border-red-500 focus:ring-red-100"
+    : form.name
+      ? "border-green-500 focus:border-green-500 focus:ring-green-100"
+      : "";
+
+  const isMaxPlayersValid = !validateMaxPlayers(form.maxPlayers, editing?.players?.length || 0);
+  const maxPlayersBorderClass = maxPlayersError
+    ? "border-red-500 focus:border-red-500 focus:ring-red-100"
+    : form.maxPlayers
+      ? "border-green-500 focus:border-green-500 focus:ring-green-100"
+      : "";
+
+  const isFormValid = isSportNameValid && isMaxPlayersValid;
 
   const columns = [
     { key: "name", header: "Sport" },
     { key: "maxPlayers", header: "Max Players" },
     { key: "players", header: "Current", render: (r) => `${r.players?.length || 0}/${r.maxPlayers || 0}` },
-    { key: "actions", header: "Actions", render: (r) => (
-      <div className="flex flex-wrap gap-2">
-        {isStudent && (
-          <>
-            <Button onClick={()=>join(r._id)}>Join</Button>
-            <Button variant="outline" onClick={()=>leave(r._id)}>Leave</Button>
-          </>
-        )}
-        {isStaff && (
-          <>
-            <Button variant="outline" onClick={()=>onEdit(r)}>Edit</Button>
-            <Button variant="danger" onClick={()=>del(r._id)}>Delete</Button>
-          </>
-        )}
-      </div>
-    ) }
+    {
+      key: "actions", header: "Actions", render: (r) => {
+        const buttonState = getJoinButtonState(r);
+        const joinError = joinErrors[r._id];
+        return (
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap gap-2">
+              {showJoinLeave && (
+                <>
+                  <Button
+                    onClick={() => join(r._id)}
+                    disabled={buttonState.disabled}
+                  >
+                    {buttonState.text}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => leave(r._id)}
+                    disabled={!(r.players || []).some(p => p._id === user?._id)}
+                  >
+                    Leave
+                  </Button>
+                </>
+              )}
+              {isStaff && (
+                <>
+                  <Button
+                    variant="outline"
+                    className="bg-gradient-to-r from-green-500 to-green-600 text-white border-green-500 hover:from-green-600 hover:to-green-700 hover:border-green-600 shadow-md hover:shadow-lg focus:ring-green-500"
+                    onClick={() => onEdit(r)}
+                  >
+                    Edit
+                  </Button>
+                  <Button variant="danger" onClick={() => del(r._id)}>Delete</Button>
+                </>
+              )}
+            </div>
+            {joinError && (
+              <p className="text-xs text-red-600">{joinError}</p>
+            )}
+          </div>
+        );
+      }
+    }
   ];
 
   return (
@@ -127,51 +352,88 @@ export default function Sports() {
     >
       <Card>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Input label="Search (name)" value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Cricket, Football..." />
-          <Select label="Team Size" value={size} onChange={(e)=>setSize(e.target.value)}>
+          <div>
+            <Input
+              label="Search (name)"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Cricket, Football..."
+              maxLength={30}
+            />
+            {q.length >= 28 && (
+              <p className="mt-1 text-xs text-gray-500">{q.length}/30</p>
+            )}
+          </div>
+          <Select label="Team Size" value={size} onChange={(e) => setSize(e.target.value)}>
             <option value="all">All</option>
             <option value="small">Small (≤ 15)</option>
             <option value="medium">Medium (16–30)</option>
             <option value="large">Large (30+)</option>
           </Select>
-          <Select label="Sort" value={sort} onChange={(e)=>setSort(e.target.value)}>
+          <Select label="Sort" value={sort} onChange={(e) => setSort(e.target.value)}>
             <option value="created_desc">Newest</option>
             <option value="created_asc">Oldest</option>
             <option value="name_asc">Name A→Z</option>
             <option value="name_desc">Name Z→A</option>
           </Select>
         </div>
+        {err && !open && (
+          <div className="mt-3 rounded-xl bg-red-50 border border-red-200 p-3">
+            <p className="text-sm font-medium text-red-700">{err}</p>
+          </div>
+        )}
       </Card>
 
       <div className="mt-4">
-        {loading ? <Loading/> : filtered.length === 0 ? (
-          <EmptyState title="No sports found" subtitle="Try a different search or filter."/>
+        {loading ? <Loading /> : filtered.length === 0 ? (
+          <EmptyState title="No sports found" subtitle="Try a different search or filter." />
         ) : (
-          <Table columns={columns} rows={filtered}/>
+          <Table columns={columns} rows={filtered} />
         )}
       </div>
 
       <Modal
         open={open}
         title={editing ? "Edit Sport" : "Create Sport"}
-        onClose={()=>setOpen(false)}
+        onClose={() => setOpen(false)}
         footer={(
           <div className="space-y-3">
             {err && <div className="rounded-xl bg-red-50 border border-red-200 p-3"><p className="text-sm font-medium text-red-700">{err}</p></div>}
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={()=>setOpen(false)}>Cancel</Button>
-              <Button onClick={save}>Save</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button onClick={save} disabled={!isFormValid}>Save</Button>
             </div>
           </div>
         )}
       >
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Input label="Sport Name" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})}/>
-          <Input label="Max Players" type="number" value={form.maxPlayers} onChange={(e)=>setForm({...form,maxPlayers:+e.target.value})}/>
-          <div className="sm:col-span-2">
-            <TextArea label="Description" rows={3} value={form.description} onChange={(e)=>setForm({...form,description:e.target.value})}/>
+        <form onSubmit={(e) => { e.preventDefault(); save(); }}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Input
+                label="Sport Name"
+                value={form.name}
+                onChange={(e) => onSportNameChange(e.target.value)}
+                onBlur={onSportNameBlur}
+                className={sportNameBorderClass}
+              />
+              {sportNameError && <p className="mt-1 text-sm text-red-600">{sportNameError}</p>}
+            </div>
+            <div>
+              <Input
+                label="Max Players"
+                type="number"
+                value={form.maxPlayers}
+                onChange={(e) => onMaxPlayersChange(e.target.value)}
+                onBlur={onMaxPlayersBlur}
+                className={maxPlayersBorderClass}
+              />
+              {maxPlayersError && <p className="mt-1 text-sm text-red-600">{maxPlayersError}</p>}
+            </div>
+            <div className="sm:col-span-2">
+              <TextArea label="Description" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            </div>
           </div>
-        </div>
+        </form>
       </Modal>
     </PageShell>
   );
