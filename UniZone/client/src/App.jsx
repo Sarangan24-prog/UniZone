@@ -3,6 +3,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import RoleRoute from "./routes/RoleRoute";
 import TopBar from "./components/TopBar";
+import Footer from "./components/Footer";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -18,8 +19,10 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <TopBar />
-        <Routes>
+        <div className="min-h-screen flex flex-col">
+          <TopBar />
+          <main className="flex-1">
+            <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
@@ -42,6 +45,9 @@ export default function App() {
 
           <Route path="*" element={<NotFound />} />
         </Routes>
+          </main>
+          <Footer />
+        </div>
       </BrowserRouter>
     </AuthProvider>
   );
