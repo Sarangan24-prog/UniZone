@@ -547,7 +547,7 @@ export default function Sports() {
               return (
                 <Card
                   key={sport._id}
-                  className="group flex flex-col h-full hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:-translate-y-2 transform transition-all duration-500 border-white/10 bg-slate-800/50 backdrop-blur-2xl rounded-[32px] overflow-hidden"
+                  className="group flex flex-col h-full hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:-translate-y-2 transform transition-all duration-500 border-white/10 bg-slate-900/95 backdrop-blur-2xl rounded-[32px] overflow-hidden"
                 >
                   {/* Decorative Gradient Glow */}
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full -mr-16 -mt-16 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
