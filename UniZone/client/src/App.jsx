@@ -12,6 +12,7 @@ import Courses from "./pages/Courses";
 import Events from "./pages/Events";
 import Sports from "./pages/Sports";
 import Services from "./pages/Services";
+import Profile from "./pages/Profile";
 import AdminRequests from "./pages/AdminRequests";
 import NotFound from "./pages/NotFound";
 
@@ -23,28 +24,29 @@ export default function App() {
           <TopBar />
           <main className="flex-1">
             <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/courses" element={<ProtectedRoute><Courses /></ProtectedRoute>} />
-          <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
-          <Route path="/sports" element={<ProtectedRoute><Sports /></ProtectedRoute>} />
-          <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
+              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/courses" element={<ProtectedRoute><Courses /></ProtectedRoute>} />
+              <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
+              <Route path="/sports" element={<ProtectedRoute><Sports /></ProtectedRoute>} />
+              <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
-          <Route
-            path="/admin/requests"
-            element={
-              <ProtectedRoute>
-                <RoleRoute roles={["admin", "staff"]}>
-                  <AdminRequests />
-                </RoleRoute>
-              </ProtectedRoute>
-            }
-          />
+              <Route
+                path="/admin/requests"
+                element={
+                  <ProtectedRoute>
+                    <RoleRoute roles={["admin", "staff"]}>
+                      <AdminRequests />
+                    </RoleRoute>
+                  </ProtectedRoute>
+                }
+              />
 
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </main>
           <Footer />
         </div>

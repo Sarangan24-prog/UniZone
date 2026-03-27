@@ -47,6 +47,9 @@ export default function Sports() {
   const [joinErrors, setJoinErrors] = useState({});
   const [form, setForm] = useState({ name: "", maxPlayers: 30, teamSizeCategory: "", status: "Active", description: "" });
 
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   const normalizeSportName = (name) => (name || "").trim().replace(/\s+/g, " ");
 
   const normalizeSearchInput = (value) => {
@@ -413,6 +416,18 @@ export default function Sports() {
       });
     }
 
+    if (startDate) {
+      const s = new Date(startDate);
+      s.setHours(0, 0, 0, 0);
+      out = out.filter(x => new Date(x.createdAt) >= s);
+    }
+
+    if (endDate) {
+      const e = new Date(endDate);
+      e.setHours(23, 59, 59, 999);
+      out = out.filter(x => new Date(x.createdAt) <= e);
+    }
+
     out.sort((a, b) => {
       if (sort === "created_desc") return new Date(b.createdAt) - new Date(a.createdAt);
       if (sort === "created_asc") return new Date(a.createdAt) - new Date(b.createdAt);
@@ -460,8 +475,8 @@ export default function Sports() {
       )}
     >
       <Card glass className="mb-8">
-        <div className="grid gap-6 sm:grid-cols-3">
-          <div>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="lg:col-span-1">
             <Input
               label="Search (name)"
               value={q}
@@ -470,7 +485,7 @@ export default function Sports() {
               maxLength={30}
             />
             {q.length >= 28 && (
-              <p className="mt-1 text-xs text-gray-500">{q.length}/30</p>
+              <p className="mt-1 text-xs text-slate-500">{q.length}/30</p>
             )}
           </div>
           <Select label="Team Size" value={size} onChange={(e) => setSize(e.target.value)}>
@@ -485,6 +500,27 @@ export default function Sports() {
             <option value="name_asc">Name A→Z</option>
             <option value="name_desc">Name Z→A</option>
           </Select>
+          <div className="lg:col-span-1">
+            <Input
+              label="First Date"
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                const val = e.target.value;
+                setStartDate(val);
+                if (endDate && val > endDate) setEndDate("");
+              }}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <Input
+              label="Last Date"
+              type="date"
+              value={endDate}
+              min={startDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
         </div>
         {err && !open && (
           <div className="mt-3 rounded-xl bg-red-50 border border-red-200 p-3">
@@ -511,105 +547,118 @@ export default function Sports() {
               return (
                 <Card
                   key={sport._id}
-                  className="group flex flex-col h-full hover:shadow-2xl hover:-translate-y-1 transform transition-all duration-500 border-white/5 bg-white/95 backdrop-blur-sm"
+                  className="group flex flex-col h-full hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:-translate-y-2 transform transition-all duration-500 border-white/10 bg-slate-900/60 backdrop-blur-2xl rounded-[32px] overflow-hidden"
                 >
-                  {/* Header */}
-                  <div className="mb-4">
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <h3 className="text-xl font-black text-slate-800 flex-1 truncate group-hover:text-blue-600 transition-colors">
-                        {sport.name}
-                      </h3>
-                      <span className={`inline-flex px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full shadow-sm ${sport.status === "Active"
-                          ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                          : "bg-slate-100 text-slate-600 border border-slate-200"
-                        }`}>
-                        {sport.status}
-                      </span>
-                    </div>
-                    {sport.teamSizeCategory && (
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100/50 w-fit px-2 py-1 rounded-md">
-                        <span className="opacity-70">📋</span> {sport.teamSizeCategory}
+                  {/* Decorative Gradient Glow */}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full -mr-16 -mt-16 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+
+                  <div className="relative p-6 flex flex-col h-full">
+                    {/* Header */}
+                    <div className="mb-6">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <h3 className="text-2xl font-black text-white flex-1 truncate group-hover:text-blue-400 transition-colors tracking-tight">
+                          {sport.name}
+                        </h3>
+                        <span className={`inline-flex px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full shadow-lg ${sport.status === "Active"
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                          : "bg-slate-700/50 text-slate-400 border border-slate-600/50"
+                          }`}>
+                          {sport.status}
+                        </span>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Description */}
-                  {sport.description && (
-                    <p className="text-sm text-slate-600 mb-6 line-clamp-2 leading-relaxed h-10">
-                      {sport.description}
-                    </p>
-                  )}
-
-                  {/* Capacity Bar */}
-                  <div className="mb-6 flex-1">
-                    <div className="flex justify-between items-end mb-2">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Occupancy</span>
-                      <span className="text-sm font-black text-slate-700">{currentPlayers} <span className="text-slate-400 font-medium">/ {maxPlayers}</span></span>
+                      {sport.teamSizeCategory && (
+                        <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-white/5 w-fit px-3 py-1 rounded-xl border border-white/5 uppercase tracking-wider">
+                          <span className="opacity-70">📋</span> {sport.teamSizeCategory}
+                        </div>
+                      )}
                     </div>
-                    <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden shadow-inner p-0.5 border border-slate-200/50">
-                      <div
-                        className={`h-full rounded-full transition-all duration-1000 ease-out shadow-sm ${capacityPercent >= 90
-                            ? "bg-gradient-to-r from-rose-500 to-red-600"
+
+                    {/* Description */}
+                    {sport.description && (
+                      <p className="text-sm text-slate-400 mb-8 line-clamp-2 leading-relaxed h-10 font-medium italic opacity-80">
+                        "{sport.description}"
+                      </p>
+                    )}
+
+                    {/* Capacity Bar */}
+                    <div className="mb-8">
+                      <div className="flex justify-between items-end mb-3">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Current Occupancy</span>
+                        <span className="text-sm font-black text-white">{currentPlayers} <span className="text-slate-500 font-medium">/ {maxPlayers}</span></span>
+                      </div>
+                      <div className="w-full bg-white/5 rounded-full h-2.5 overflow-hidden shadow-inner p-0.5 border border-white/5">
+                        <div
+                          className={`h-full rounded-full transition-all duration-1000 ease-out shadow-lg ${capacityPercent >= 90
+                            ? "bg-gradient-to-r from-rose-500 to-red-600 shadow-red-500/20"
                             : capacityPercent >= 70
-                              ? "bg-gradient-to-r from-amber-400 to-orange-500"
-                              : "bg-gradient-to-r from-blue-500 to-indigo-600"
-                          }`}
-                        style={{ width: `${capacityPercent}%` }}
-                      ></div>
+                              ? "bg-gradient-to-r from-amber-400 to-orange-500 shadow-orange-500/20"
+                              : "bg-gradient-to-r from-blue-500 to-indigo-600 shadow-blue-500/20"
+                            }`}
+                          style={{ width: `${capacityPercent}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between items-center mt-3 font-black text-[9px] uppercase tracking-widest">
+                        <span className={capacityPercent >= 90 ? "text-red-400" : "text-slate-500"}>
+                          {capacityPercent >= 90 ? "⚠️ Almost Full" : "Available"}
+                        </span>
+                        <span className="text-slate-400">{capacityPercent}%</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center mt-2 font-bold text-[10px]">
-                      <span className={capacityPercent >= 90 ? "text-red-500" : "text-slate-400"}>
-                        {capacityPercent >= 90 ? "⚠️ Almost Full" : "Available"}
-                      </span>
-                      <span className="text-slate-500">{capacityPercent}%</span>
-                    </div>
-                  </div>
 
-                  {/* Action Buttons */}
-                  <div className="mt-auto space-y-2 border-t border-gray-200 pt-4">
-                    {showJoinLeave && (
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => join(sport._id)}
-                          disabled={buttonState.disabled}
-                          className="flex-1 text-xs"
-                        >
-                          {buttonState.text}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => leave(sport._id)}
-                          disabled={!alreadyJoined}
-                          className="flex-1 text-xs"
-                        >
-                          Leave
-                        </Button>
-                      </div>
-                    )}
-                    {isStaff && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          variant="outline"
-                          className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white border-cyan-500 hover:from-cyan-600 hover:to-blue-600 hover:border-cyan-600 shadow-md hover:shadow-lg focus:ring-cyan-500 text-xs"
-                          onClick={() => onOpenPlayerModal(sport)}
-                        >
-                          Players
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="bg-gradient-to-r from-green-500 to-green-600 text-white border-green-500 hover:from-green-600 hover:to-green-700 hover:border-green-600 shadow-md hover:shadow-lg focus:ring-green-500 text-xs"
-                          onClick={() => onEdit(sport)}
-                        >
-                          Edit
-                        </Button>
-                        <Button variant="danger" onClick={() => del(sport._id)} className="text-xs col-span-2">
-                          Delete
-                        </Button>
-                      </div>
-                    )}
-                    {joinError && (
-                      <p className="text-xs text-red-600 bg-red-50 p-2 rounded">{joinError}</p>
-                    )}
+                    {/* Action Buttons */}
+                    <div className="mt-auto space-y-3 pt-6 border-t border-white/5">
+                      {showJoinLeave && (
+                        <div className="flex gap-3">
+                          <Button
+                            onClick={() => join(sport._id)}
+                            disabled={buttonState.disabled}
+                            className={`flex-1 text-xs font-black rounded-xl py-3 shadow-lg transition-all ${!alreadyJoined ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20" : "bg-white/10 text-slate-400 border border-white/10"
+                              }`}
+                          >
+                            {buttonState.text}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => leave(sport._id)}
+                            disabled={!alreadyJoined}
+                            className="flex-1 text-xs font-black rounded-xl py-3 border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all"
+                          >
+                            Leave
+                          </Button>
+                        </div>
+                      )}
+
+                      {isStaff && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <Button
+                            variant="outline"
+                            className="bg-gradient-to-r from-cyan-600 to-blue-700 text-white border-blue-500/30 hover:from-cyan-500 hover:to-blue-600 shadow-xl shadow-blue-900/40 text-[10px] font-black uppercase tracking-widest rounded-xl py-2.5"
+                            onClick={() => onOpenPlayerModal(sport)}
+                          >
+                            Players
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white border-emerald-500/30 hover:from-emerald-500 hover:to-teal-600 shadow-xl shadow-emerald-900/40 text-[10px] font-black uppercase tracking-widest rounded-xl py-2.5"
+                            onClick={() => onEdit(sport)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="danger"
+                            onClick={() => del(sport._id)}
+                            className="text-[10px] font-black uppercase tracking-widest col-span-2 rounded-xl py-2.5 opacity-60 hover:opacity-100 transition-opacity"
+                          >
+                            Delete Sport
+                          </Button>
+                        </div>
+                      )}
+                      {joinError && (
+                        <p className="text-[10px] font-black text-red-400 bg-red-500/5 border border-red-500/20 p-3 rounded-xl animate-in fade-in slide-in-from-top-1">
+                          {joinError}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </Card>
               );
