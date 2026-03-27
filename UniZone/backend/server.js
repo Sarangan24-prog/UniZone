@@ -8,8 +8,7 @@ const authRoutes = require('./routes/authRoutes');
 const courseRoutes = require('./routes/courseRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const sportRoutes = require('./routes/sportRoutes');
-const serviceRoutes = require('./routes/serviceRoutes');
-
+const serviceRoutes = require('./routes/serviceRoutes');const userRoutes = require('./routes/userRoutes');
 // Connect to database
 connectDB();
 
@@ -27,6 +26,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/sports', sportRoutes);
 app.use('/api/services', serviceRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

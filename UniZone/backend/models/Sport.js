@@ -20,6 +20,28 @@ const sportSchema = new mongoose.Schema({
   players: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  }],
+  playerRegistrations: [{
+    player: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    role: {
+      type: String,
+      enum: ['Player', 'Captain', 'Substitute'],
+      default: 'Player'
+    },
+    jerseyNumber: {
+      type: Number,
+      min: 1,
+      max: 999
+    },
+    notes: {
+      type: String,
+      trim: true,
+      maxlength: 500
+    }
   }]
 }, {
   timestamps: true

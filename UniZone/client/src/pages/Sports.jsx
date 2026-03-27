@@ -32,9 +32,21 @@ export default function Sports() {
   const [err, setErr] = useState("");
   const [sportNameError, setSportNameError] = useState("");
   const [maxPlayersError, setMaxPlayersError] = useState("");
+  const [categoryError, setCategoryError] = useState("");
+  const [statusError, setStatusError] = useState("");
+  const [descriptionError, setDescriptionError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const [playerModalOpen, setPlayerModalOpen] = useState(false);
+  const [playerModalSport, setPlayerModalSport] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [playerForm, setPlayerForm] = useState({ studentId: "", role: "Player", jerseyNumber: "", notes: "" });
+  const [playerErrors, setPlayerErrors] = useState({ studentId: "", role: "", jerseyNumber: "", notes: "", general: "" });
+  const [playerSubmitting, setPlayerSubmitting] = useState(false);
+
   const [joiningStates, setJoiningStates] = useState({});
   const [joinErrors, setJoinErrors] = useState({});
-  const [form, setForm] = useState({ name: "", maxPlayers: 30, description: "" });
+  const [form, setForm] = useState({ name: "", maxPlayers: 30, teamSizeCategory: "", status: "Active", description: "" });
 
   const normalizeSportName = (name) => (name || "").trim().replace(/\s+/g, " ");
 
@@ -79,6 +91,34 @@ export default function Sports() {
     return "";
   };
 
+  const validatePlayerSelection = (value) => {
+    if (!value) return "Student is required";
+    return "";
+  };
+
+  const validatePlayerRole = (value) => {
+    if (!value) return "Player role is required";
+    return "";
+  };
+
+  const validateJerseyNumber = (value) => {
+    if (!value) return "";
+    const num = Number(value);
+    if (isNaN(num) || !Number.isInteger(num)) return "Jersey number must be a whole number";
+    if (num < 1) return "Jersey number must be greater than 0";
+    if (num > 999) return "Jersey number must be 999 or less";
+    return "";
+  };
+
+  const canRegisterPlayer = (sport, studentId) => {
+    if (!sport || !studentId) return false;
+    const currentPlayers = sport.players?.length || 0;
+    if (currentPlayers >= sport.maxPlayers) return false;
+    const alreadyAdded = (sport.players || []).some((p) => String(p?._id || p) === String(studentId));
+    return !alreadyAdded;
+  };
+
+
   const canJoinSport = (sport) => {
     if (!user) return false;
     const currentPlayers = sport.players?.length || 0;
@@ -111,6 +151,20 @@ export default function Sports() {
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
+    const loadStudents = async () => {
+      if (!isStaff) return;
+      try {
+        const res = await api.get('/users');
+        setStudents((res.data || []).filter((u) => u.role === 'student'));
+      } catch (error) {
+        console.error('Unable to load students', error);
+      }
+    };
+
+    loadStudents();
+  }, [isStaff]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQ(normalizeSearchInput(q));
     }, 200);
@@ -119,22 +173,47 @@ export default function Sports() {
 
 
   const onCreate = () => {
-    setForm({ name: "", maxPlayers: 30, description: "" });
+    setForm({ name: "", maxPlayers: 30, teamSizeCategory: "", status: "Active", description: "" });
     setEditing(null);
     setErr("");
     setSportNameError("");
     setMaxPlayersError("");
+    setCategoryError("");
+    setStatusError("");
+    setDescriptionError("");
     setOpen(true);
   };
 
   const onEdit = (row) => {
     setEditing(row);
-    setForm({ name: row.name || "", maxPlayers: row.maxPlayers || 30, description: row.description || "" });
+    setForm({
+      name: row.name || "",
+      maxPlayers: row.maxPlayers || 30,
+      teamSizeCategory: row.teamSizeCategory || "",
+      status: row.status || "Active",
+      description: row.description || ""
+    });
     setErr("");
     setSportNameError("");
     setMaxPlayersError("");
+    setCategoryError("");
+    setStatusError("");
+    setDescriptionError("");
     setOpen(true);
   };
+
+  const onOpenPlayerModal = (sport) => {
+    setPlayerModalSport(sport);
+    setPlayerForm({ studentId: "", role: "Player", jerseyNumber: "", notes: "" });
+    setPlayerErrors({ studentId: "", role: "", jerseyNumber: "", notes: "", general: "" });
+    setPlayerModalOpen(true);
+  };
+
+  const onClosePlayerModal = () => {
+    setPlayerModalOpen(false);
+    setPlayerModalSport(null);
+  };
+
 
   const onSportNameChange = (value) => {
     const updatedForm = { ...form, name: value };
@@ -167,6 +246,9 @@ export default function Sports() {
     const validationErrorName = validateSportName(normalized, items, editing?._id);
     const currentPlayers = editing?.players?.length || 0;
     const validationErrorMaxPlayers = validateMaxPlayers(form.maxPlayers, currentPlayers);
+    const validationErrorCategory = !form.teamSizeCategory ? "Team Size Category is required" : "";
+    const validationErrorStatus = !form.status ? "Status is required" : "";
+    const validationErrorDescription = form.description && normalizeSportName(form.description).length > 200 ? "Description must not exceed 200 characters" : "";
 
     if (validationErrorName) {
       setSportNameError(validationErrorName);
@@ -176,18 +258,83 @@ export default function Sports() {
       setMaxPlayersError(validationErrorMaxPlayers);
       return;
     }
+    if (validationErrorCategory) {
+      setCategoryError(validationErrorCategory);
+      return;
+    }
+    if (validationErrorStatus) {
+      setStatusError(validationErrorStatus);
+      return;
+    }
+    if (validationErrorDescription) {
+      setDescriptionError(validationErrorDescription);
+      return;
+    }
 
     try {
       setErr("");
-      const payload = { ...form, name: normalized, maxPlayers: Math.trunc(form.maxPlayers) };
+      setSubmitting(true);
+      const payload = {
+        ...form,
+        name: normalized,
+        maxPlayers: Math.trunc(form.maxPlayers),
+        description: form.description ? form.description.trim() : ""
+      };
       if (editing) await api.put(`/sports/${editing._id}`, payload);
       else await api.post("/sports", payload);
       setOpen(false);
+      setEditing(null);
+      setForm({ name: "", maxPlayers: 30, teamSizeCategory: "", status: "Active", description: "" });
       load();
     } catch (e) {
       setErr(e.response?.data?.message || "Save failed");
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  const registerPlayer = async () => {
+    if (!playerModalSport) return;
+
+    const studentIdError = validatePlayerSelection(playerForm.studentId);
+    const roleError = validatePlayerRole(playerForm.role);
+    const jerseyError = validateJerseyNumber(playerForm.jerseyNumber);
+
+    if (studentIdError || roleError || jerseyError) {
+      setPlayerErrors((prev) => ({ ...prev, studentId: studentIdError, role: roleError, jerseyNumber: jerseyError }));
+      return;
+    }
+
+    if (!canRegisterPlayer(playerModalSport, playerForm.studentId)) {
+      setPlayerErrors((prev) => ({ ...prev, general: "Cannot register player: already registered or sport is full." }));
+      return;
+    }
+
+    if ((playerModalSport.players || []).length >= (playerModalSport.maxPlayers || 0)) {
+      setPlayerErrors((prev) => ({ ...prev, general: "Cannot register player because the sport is full." }));
+      return;
+    }
+
+    try {
+      setPlayerSubmitting(true);
+      setPlayerErrors((prev) => ({ ...prev, general: "" }));
+
+      await api.post(`/sports/${playerModalSport._id}/register`, {
+        studentId: playerForm.studentId,
+        role: playerForm.role,
+        jerseyNumber: playerForm.jerseyNumber ? Number(playerForm.jerseyNumber) : undefined,
+        notes: playerForm.notes?.trim(),
+      });
+
+      onClosePlayerModal();
+      load();
+    } catch (e) {
+      setPlayerErrors((prev) => ({ ...prev, general: e.response?.data?.message || "Player registration failed" }));
+    } finally {
+      setPlayerSubmitting(false);
+    }
+  };
+
 
   const del = async (id) => {
     if (!confirm("Delete this sport?")) return;
@@ -292,7 +439,11 @@ export default function Sports() {
       ? "border-green-500 focus:border-green-500 focus:ring-green-100"
       : "";
 
-  const isFormValid = isSportNameValid && isMaxPlayersValid;
+  const isCategoryValid = !!form.teamSizeCategory;
+  const isStatusValid = !!form.status;
+  const isDescriptionValid = !form.description || form.description.trim().length <= 200;
+
+  const isFormValid = isSportNameValid && isMaxPlayersValid && isCategoryValid && isStatusValid && isDescriptionValid;
 
   const columns = [
     { key: "name", header: "Sport" },
@@ -324,6 +475,13 @@ export default function Sports() {
               )}
               {isStaff && (
                 <>
+                  <Button
+                    variant="outline"
+                    className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white border-cyan-500 hover:from-cyan-600 hover:to-blue-600 hover:border-cyan-600 shadow-md hover:shadow-lg focus:ring-cyan-500"
+                    onClick={() => onOpenPlayerModal(r)}
+                  >
+                    Manage Players
+                  </Button>
                   <Button
                     variant="outline"
                     className="bg-gradient-to-r from-green-500 to-green-600 text-white border-green-500 hover:from-green-600 hover:to-green-700 hover:border-green-600 shadow-md hover:shadow-lg focus:ring-green-500"
@@ -394,14 +552,16 @@ export default function Sports() {
 
       <Modal
         open={open}
-        title={editing ? "Edit Sport" : "Create Sport"}
+        title={editing ? "Edit Sport" : "Add New Sport"}
         onClose={() => setOpen(false)}
         footer={(
           <div className="space-y-3">
             {err && <div className="rounded-xl bg-red-50 border border-red-200 p-3"><p className="text-sm font-medium text-red-700">{err}</p></div>}
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={save} disabled={!isFormValid}>Save</Button>
+              <Button onClick={save} disabled={!isFormValid || submitting}>
+                {submitting ? "Saving..." : editing ? "Update Sport" : "Create Sport"}
+              </Button>
             </div>
           </div>
         )}
@@ -429,11 +589,150 @@ export default function Sports() {
               />
               {maxPlayersError && <p className="mt-1 text-sm text-red-600">{maxPlayersError}</p>}
             </div>
+            <div>
+              <Select
+                label="Team Size Category"
+                value={form.teamSizeCategory}
+                onChange={(e) => {
+                  setForm({ ...form, teamSizeCategory: e.target.value });
+                  setCategoryError(e.target.value ? "" : "Team Size Category is required");
+                }}
+                className={categoryError ? "border-red-500 focus:border-red-500 focus:ring-red-100" : ""}
+              >
+                <option value="">Select category</option>
+                <option value="Individual">Individual</option>
+                <option value="Duo">Duo</option>
+                <option value="Small Team">Small Team</option>
+                <option value="Medium Team">Medium Team</option>
+                <option value="Large Team">Large Team</option>
+              </Select>
+              {categoryError && <p className="mt-1 text-sm text-red-600">{categoryError}</p>}
+            </div>
+            <div>
+              <Select
+                label="Status"
+                value={form.status}
+                onChange={(e) => {
+                  setForm({ ...form, status: e.target.value });
+                  setStatusError(e.target.value ? "" : "Status is required");
+                }}
+                className={statusError ? "border-red-500 focus:border-red-500 focus:ring-red-100" : ""}
+              >
+                <option value="">Select status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </Select>
+              {statusError && <p className="mt-1 text-sm text-red-600">{statusError}</p>}
+            </div>
             <div className="sm:col-span-2">
-              <TextArea label="Description" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              <TextArea
+                label="Description"
+                rows={3}
+                value={form.description}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setForm({ ...form, description: value });
+                  setDescriptionError(value.trim().length > 200 ? "Description must not exceed 200 characters" : "");
+                }}
+              />
+              {descriptionError && <p className="mt-1 text-sm text-red-600">{descriptionError}</p>}
             </div>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={playerModalOpen}
+        title="Register Player"
+        onClose={onClosePlayerModal}
+        footer={(
+          <div className="space-y-3">
+            {playerErrors.general && <div className="rounded-xl bg-red-50 border border-red-200 p-3"><p className="text-sm font-medium text-red-700">{playerErrors.general}</p></div>}
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={onClosePlayerModal}>Cancel</Button>
+              <Button onClick={registerPlayer} disabled={playerSubmitting || !playerForm.studentId || !playerForm.role || playerErrors.studentId || playerErrors.role || playerErrors.jerseyNumber}>
+                {playerSubmitting ? "Saving..." : "Register Player"}
+              </Button>
+            </div>
+          </div>
+        )}
+      >
+        <div className="space-y-5">
+          <div className="text-sm text-slate-600">
+            {playerModalSport ? `Managing: ${playerModalSport.name} (${(playerModalSport.players || []).length}/${playerModalSport.maxPlayers})` : "Select a sport to manage players"}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Input label="Selected Sport" value={playerModalSport?.name || ""} disabled />
+            </div>
+            <div>
+              <Input label="Current Players" value={`${(playerModalSport?.players?.length || 0)} / ${playerModalSport?.maxPlayers || 0}`} disabled />
+            </div>
+            <div className="sm:col-span-2">
+              <Select
+                label="Student / Player"
+                value={playerForm.studentId}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setPlayerForm((prev) => ({ ...prev, studentId: value }));
+                  setPlayerErrors((prev) => ({ ...prev, studentId: validatePlayerSelection(value) }));
+                }}
+                className={playerErrors.studentId ? "border-red-500 focus:border-red-500 focus:ring-red-100" : ""}
+              >
+                <option value="">Select student</option>
+                {students.map((s) => (
+                  <option key={s._id} value={s._id}>{s.name} ({s.email})</option>
+                ))}
+              </Select>
+              {playerErrors.studentId && <p className="mt-1 text-sm text-red-600">{playerErrors.studentId}</p>}
+            </div>
+            <div>
+              <Select
+                label="Player Role"
+                value={playerForm.role}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setPlayerForm((prev) => ({ ...prev, role: value }));
+                  setPlayerErrors((prev) => ({ ...prev, role: validatePlayerRole(value) }));
+                }}
+                className={playerErrors.role ? "border-red-500 focus:border-red-500 focus:ring-red-100" : ""}
+              >
+                <option value="">Select role</option>
+                <option value="Player">Player</option>
+                <option value="Captain">Captain</option>
+                <option value="Substitute">Substitute</option>
+              </Select>
+              {playerErrors.role && <p className="mt-1 text-sm text-red-600">{playerErrors.role}</p>}
+            </div>
+            <div>
+              <Input
+                label="Jersey Number (optional)"
+                type="number"
+                value={playerForm.jerseyNumber}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setPlayerForm((prev) => ({ ...prev, jerseyNumber: value }));
+                  setPlayerErrors((prev) => ({ ...prev, jerseyNumber: validateJerseyNumber(value) }));
+                }}
+                className={playerErrors.jerseyNumber ? "border-red-500 focus:border-red-500 focus:ring-red-100" : ""}
+              />
+              {playerErrors.jerseyNumber && <p className="mt-1 text-sm text-red-600">{playerErrors.jerseyNumber}</p>}
+            </div>
+            <div className="sm:col-span-2">
+              <TextArea
+                label="Notes (optional)"
+                rows={3}
+                value={playerForm.notes}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setPlayerForm((prev) => ({ ...prev, notes: value }));
+                  setPlayerErrors((prev) => ({ ...prev, notes: value.trim().length > 500 ? "Notes should be 500 characters or fewer" : "" }));
+                }}
+              />
+              {playerErrors.notes && <p className="mt-1 text-sm text-red-600">{playerErrors.notes}</p>}
+            </div>
+          </div>
+        </div>
       </Modal>
     </PageShell>
   );
