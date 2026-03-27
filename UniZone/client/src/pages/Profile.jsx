@@ -55,7 +55,7 @@ export default function Profile() {
     };
 
     return (
-        <PageShell title="Academic Identity" subtitle="Refine your professional persona and account settings">
+        <PageShell title="User Profile" subtitle="Refine your professional persona and account settings">
             <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
                 {/* Premium Hero Section */}
                 <div className="relative group overflow-hidden rounded-[40px] border border-white/10 bg-slate-900/60 backdrop-blur-3xl shadow-[0_32px_128px_rgba(0,0,0,0.5)]">
@@ -108,13 +108,13 @@ export default function Profile() {
                 <div className="grid gap-8 md:grid-cols-12">
                     {/* Left: Account Details */}
                     <div className="md:col-span-7 space-y-8">
-                        <Card className="bg-slate-900/60 border-white/5 backdrop-blur-3xl rounded-[32px] p-8 h-full">
+                        <Card className="bg-gradient-to-b from-slate-200 to-slate-50 border border-white/50 shadow-2xl rounded-[32px] p-8 h-full">
                             <div className="flex items-center justify-between mb-10">
-                                <h3 className="text-2xl font-black text-white flex items-center gap-4">
-                                    <span className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-xl shadow-inner">👤</span>
+                                <h3 className="text-2xl font-black text-slate-900 flex items-center gap-4">
+                                    <span className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-800 flex items-center justify-center text-xl shadow-inner border border-white">👤</span>
                                     Core Profile
                                 </h3>
-                                <div className="h-[2px] flex-1 mx-6 bg-gradient-to-r from-blue-500/20 to-transparent"></div>
+                                <div className="h-[2px] flex-1 mx-6 bg-gradient-to-r from-slate-300 to-transparent"></div>
                             </div>
 
                             <div className="grid gap-10 sm:grid-cols-2">
@@ -124,11 +124,11 @@ export default function Profile() {
                                     { label: 'Academic Major', value: profileForm.major, desc: 'Department specialization' },
                                     { label: 'Academic Year', value: profileForm.year, desc: 'Enrollment progress' }
                                 ].map(item => (
-                                    <div key={item.label} className="group/item space-y-2">
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] group-hover/item:text-blue-400 transition-colors px-1">{item.label}</p>
-                                        <div className="p-4 rounded-2xl bg-white/5 border border-white/5 group-hover/item:border-blue-500/30 transition-all">
-                                            <p className="text-lg font-bold text-white tracking-tight">{item.value}</p>
-                                            <p className="text-[10px] font-bold text-slate-600 uppercase mt-1">{item.desc}</p>
+                                    <div key={item.label} className="group/item flex flex-col gap-1">
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] group-hover/item:text-slate-700 transition-colors">{item.label}</p>
+                                        <div className="py-2 transition-all">
+                                            <p className="text-lg font-bold text-slate-800 tracking-tight">{item.value}</p>
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">{item.desc}</p>
                                         </div>
                                     </div>
                                 ))}
@@ -138,24 +138,24 @@ export default function Profile() {
 
                     {/* Right: Security & Actions */}
                     <div className="md:col-span-5 space-y-8">
-                        <Card className="bg-slate-900/60 border-white/5 backdrop-blur-3xl rounded-[32px] p-8">
-                            <h3 className="text-2xl font-black text-white mb-8 flex items-center gap-4">
-                                <span className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-xl shadow-inner">⚡</span>
+                        <Card className="bg-gradient-to-b from-slate-200 to-slate-50 border border-white/50 shadow-2xl rounded-[32px] p-8">
+                            <h3 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-4">
+                                <span className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-800 flex items-center justify-center text-xl shadow-inner border border-white">⚡</span>
                                 Ecosystem
                             </h3>
                             <div className="grid gap-4">
                                 {[
-                                    { name: 'Update Security', icon: '🔑', color: 'bg-blue-500/10 text-blue-400' },
-                                    { name: 'Preferences', icon: '⚙️', color: 'bg-slate-500/10 text-slate-400' },
-                                    { name: 'Download Data', icon: '📄', color: 'bg-emerald-500/10 text-emerald-400' },
-                                    { name: 'Privacy Center', icon: '🛡️', color: 'bg-purple-500/10 text-purple-400' }
+                                    { name: 'Update Security', icon: '🔑', color: 'bg-white text-blue-500' },
+                                    { name: 'Preferences', icon: '⚙️', color: 'bg-white text-slate-500' },
+                                    { name: 'Download Data', icon: '📄', color: 'bg-white text-emerald-500' },
+                                    { name: 'Privacy Center', icon: '🛡️', color: 'bg-white text-purple-500' }
                                 ].map(action => (
-                                    <button key={action.name} className="flex items-center justify-between w-full p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/10 transition-all group/action">
+                                    <button key={action.name} className="flex items-center justify-between w-full p-4 rounded-2xl bg-white/60 border border-white hover:bg-white transition-all group/action shadow-sm">
                                         <div className="flex items-center gap-4">
-                                            <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${action.color} group-hover/action:scale-110 transition-transform shadow-inner`}>{action.icon}</span>
-                                            <span className="text-sm font-black text-slate-400 group-hover/action:text-white uppercase tracking-widest">{action.name}</span>
+                                            <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${action.color} group-hover/action:scale-110 transition-transform shadow-sm`}>{action.icon}</span>
+                                            <span className="text-sm font-black text-slate-400 group-hover/action:text-slate-800 uppercase tracking-widest">{action.name}</span>
                                         </div>
-                                        <span className="text-slate-700 group-hover/action:text-white group-hover/action:translate-x-1 transition-all">→</span>
+                                        <span className="text-slate-400 group-hover/action:text-slate-800 group-hover/action:translate-x-1 transition-all">→</span>
                                     </button>
                                 ))}
                             </div>
@@ -182,7 +182,7 @@ export default function Profile() {
             {/* Profile Edit Modal */}
             <Modal
                 open={isEditModalOpen}
-                title="Update Academic Profile"
+                title="Update User Profile"
                 onClose={() => {
                     setIsEditModalOpen(false);
                     setFormErrors({});
