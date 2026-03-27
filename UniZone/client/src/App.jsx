@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Splash from "./pages/Splash";
 import { AuthProvider } from "./auth/AuthContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import RoleRoute from "./routes/RoleRoute";
@@ -17,6 +19,11 @@ import AdminRequests from "./pages/AdminRequests";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
+  const [loading, setLoading] = useState(true);
+
+if (loading) {
+  return <Splash onFinish={() => setLoading(false)} />;
+}
   return (
     <AuthProvider>
       <BrowserRouter>
