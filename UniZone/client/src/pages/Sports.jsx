@@ -79,7 +79,7 @@ export default function Sports() {
     const strValue = String(value || "").trim();
 
     if (!strValue) return "Max players is required";
-    
+
     const num = Number(strValue);
     if (isNaN(num)) return "Max players must be a whole number";
     if (!Number.isInteger(num)) return "Max players must be a whole number";
@@ -363,7 +363,7 @@ export default function Sports() {
       setItems(updatedItems);
 
       const res = await api.post(`/sports/${id}/join`);
-      
+
       // Sync with backend response if available
       if (res.data) {
         const syncedItems = items.map(s =>
@@ -374,7 +374,7 @@ export default function Sports() {
     } catch (e) {
       const errorMsg = e.response?.data?.message || "Join failed";
       setJoinErrors({ ...joinErrors, [id]: errorMsg });
-      
+
       // Revert optimistic update on error
       load();
     } finally {
@@ -446,12 +446,21 @@ export default function Sports() {
 
   return (
     <PageShell
-      title="Sports"
-      subtitle="Search, filter by team size, and manage sports"
-      right={isStaff && <Button onClick={onCreate}>New Sport</Button>}
+      title="Sports Management"
+      subtitle="Discover, join, and manage campus sports activities"
+      right={isStaff && (
+        <Button
+          onClick={onCreate}
+          className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/40 border-none !px-6 !py-3 rounded-2xl transform active:scale-95 transition-all"
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-lg">+</span> New Sport
+          </span>
+        </Button>
+      )}
     >
-      <Card>
-        <div className="grid gap-3 sm:grid-cols-3">
+      <Card glass className="mb-8">
+        <div className="grid gap-6 sm:grid-cols-3">
           <div>
             <Input
               label="Search (name)"
@@ -500,46 +509,60 @@ export default function Sports() {
               const alreadyJoined = (sport.players || []).some(p => p._id === user?._id);
 
               return (
-                <Card key={sport._id} className="flex flex-col h-full hover:shadow-lg transition-shadow duration-200">
+                <Card
+                  key={sport._id}
+                  className="group flex flex-col h-full hover:shadow-2xl hover:-translate-y-1 transform transition-all duration-500 border-white/5 bg-white/95 backdrop-blur-sm"
+                >
                   {/* Header */}
-                  <div className="mb-3">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="text-lg font-bold text-gray-900 flex-1 truncate"> {sport.name}</h3>
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
-                        sport.status === "Active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                      }`}>
+                  <div className="mb-4">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <h3 className="text-xl font-black text-slate-800 flex-1 truncate group-hover:text-blue-600 transition-colors">
+                        {sport.name}
+                      </h3>
+                      <span className={`inline-flex px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full shadow-sm ${sport.status === "Active"
+                          ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                          : "bg-slate-100 text-slate-600 border border-slate-200"
+                        }`}>
                         {sport.status}
                       </span>
                     </div>
                     {sport.teamSizeCategory && (
-                      <p className="text-xs text-gray-600">📋 {sport.teamSizeCategory}</p>
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100/50 w-fit px-2 py-1 rounded-md">
+                        <span className="opacity-70">📋</span> {sport.teamSizeCategory}
+                      </div>
                     )}
                   </div>
 
                   {/* Description */}
                   {sport.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{sport.description}</p>
+                    <p className="text-sm text-slate-600 mb-6 line-clamp-2 leading-relaxed h-10">
+                      {sport.description}
+                    </p>
                   )}
 
                   {/* Capacity Bar */}
-                  <div className="mb-4 flex-1">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-gray-700">Capacity</span>
-                      <span className="text-sm font-bold text-blue-600">{currentPlayers}/{maxPlayers}</span>
+                  <div className="mb-6 flex-1">
+                    <div className="flex justify-between items-end mb-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Occupancy</span>
+                      <span className="text-sm font-black text-slate-700">{currentPlayers} <span className="text-slate-400 font-medium">/ {maxPlayers}</span></span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden shadow-inner p-0.5 border border-slate-200/50">
                       <div
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          capacityPercent >= 90
-                            ? "bg-red-500"
+                        className={`h-full rounded-full transition-all duration-1000 ease-out shadow-sm ${capacityPercent >= 90
+                            ? "bg-gradient-to-r from-rose-500 to-red-600"
                             : capacityPercent >= 70
-                              ? "bg-yellow-500"
-                              : "bg-green-500"
-                        }`}
+                              ? "bg-gradient-to-r from-amber-400 to-orange-500"
+                              : "bg-gradient-to-r from-blue-500 to-indigo-600"
+                          }`}
                         style={{ width: `${capacityPercent}%` }}
                       ></div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{capacityPercent}% Full</p>
+                    <div className="flex justify-between items-center mt-2 font-bold text-[10px]">
+                      <span className={capacityPercent >= 90 ? "text-red-500" : "text-slate-400"}>
+                        {capacityPercent >= 90 ? "⚠️ Almost Full" : "Available"}
+                      </span>
+                      <span className="text-slate-500">{capacityPercent}%</span>
+                    </div>
                   </div>
 
                   {/* Action Buttons */}
