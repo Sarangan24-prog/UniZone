@@ -61,6 +61,7 @@ export default function Events() {
       const payload = { ...form, dateTime: new Date(form.dateTime) };
       if (editing) await api.put(`/events/${editing._id}`, payload);
       else await api.post("/events", payload);
+       alert("Event saved successfully")
       setOpen(false);
       load();
     } catch (e) {
@@ -70,6 +71,7 @@ export default function Events() {
 
   const del = async (id) => {
     // if (!confirm("Delete this event?")) return;
+    if (!window.confirm("Are you sure you want to delete this event?")) return;
     await api.delete(`/events/${id}`);
     load();
   };

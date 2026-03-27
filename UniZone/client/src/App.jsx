@@ -15,6 +15,11 @@ import AdminRequests from "./pages/AdminRequests";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
+  const [loading, setLoading] = useState(true);
+
+if (loading) {
+  return <Splash onFinish={() => setLoading(false)} />;
+}
   return (
     <AuthProvider>
       <BrowserRouter>
