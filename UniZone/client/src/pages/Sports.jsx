@@ -6,7 +6,6 @@ import Input from "../components/Input";
 import Select from "../components/Select";
 import Button from "../components/Button";
 import Modal from "../components/Modal";
-import Table from "../components/Table";
 import EmptyState from "../components/EmptyState";
 import Loading from "../components/Loading";
 import TextArea from "../components/TextArea";
@@ -445,63 +444,6 @@ export default function Sports() {
 
   const isFormValid = isSportNameValid && isMaxPlayersValid && isCategoryValid && isStatusValid && isDescriptionValid;
 
-  const columns = [
-    { key: "name", header: "Sport" },
-    { key: "maxPlayers", header: "Max Players" },
-    { key: "players", header: "Current", render: (r) => `${r.players?.length || 0}/${r.maxPlayers || 0}` },
-    {
-      key: "actions", header: "Actions", render: (r) => {
-        const buttonState = getJoinButtonState(r);
-        const joinError = joinErrors[r._id];
-        return (
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap gap-2">
-              {showJoinLeave && (
-                <>
-                  <Button
-                    onClick={() => join(r._id)}
-                    disabled={buttonState.disabled}
-                  >
-                    {buttonState.text}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => leave(r._id)}
-                    disabled={!(r.players || []).some(p => p._id === user?._id)}
-                  >
-                    Leave
-                  </Button>
-                </>
-              )}
-              {isStaff && (
-                <>
-                  <Button
-                    variant="outline"
-                    className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white border-cyan-500 hover:from-cyan-600 hover:to-blue-600 hover:border-cyan-600 shadow-md hover:shadow-lg focus:ring-cyan-500"
-                    onClick={() => onOpenPlayerModal(r)}
-                  >
-                    Manage Players
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="bg-gradient-to-r from-green-500 to-green-600 text-white border-green-500 hover:from-green-600 hover:to-green-700 hover:border-green-600 shadow-md hover:shadow-lg focus:ring-green-500"
-                    onClick={() => onEdit(r)}
-                  >
-                    Edit
-                  </Button>
-                  <Button variant="danger" onClick={() => del(r._id)}>Delete</Button>
-                </>
-              )}
-            </div>
-            {joinError && (
-              <p className="text-xs text-red-600">{joinError}</p>
-            )}
-          </div>
-        );
-      }
-    }
-  ];
-
   return (
     <PageShell
       title="Sports"
@@ -542,11 +484,114 @@ export default function Sports() {
         )}
       </Card>
 
-      <div className="mt-4">
-        {loading ? <Loading /> : filtered.length === 0 ? (
+      <div className="mt-6">
+        {loading ? (
+          <Loading />
+        ) : filtered.length === 0 ? (
           <EmptyState title="No sports found" subtitle="Try a different search or filter." />
         ) : (
-          <Table columns={columns} rows={filtered} />
+          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filtered.map((sport) => {
+              const buttonState = getJoinButtonState(sport);
+              const joinError = joinErrors[sport._id];
+              const currentPlayers = sport.players?.length || 0;
+              const maxPlayers = sport.maxPlayers || 0;
+              const capacityPercent = maxPlayers > 0 ? Math.round((currentPlayers / maxPlayers) * 100) : 0;
+              const alreadyJoined = (sport.players || []).some(p => p._id === user?._id);
+
+              return (
+                <Card key={sport._id} className="flex flex-col h-full hover:shadow-lg transition-shadow duration-200">
+                  {/* Header */}
+                  <div className="mb-3">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h3 className="text-lg font-bold text-gray-900 flex-1 truncate"> {sport.name}</h3>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
+                        sport.status === "Active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                      }`}>
+                        {sport.status}
+                      </span>
+                    </div>
+                    {sport.teamSizeCategory && (
+                      <p className="text-xs text-gray-600">📋 {sport.teamSizeCategory}</p>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  {sport.description && (
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{sport.description}</p>
+                  )}
+
+                  {/* Capacity Bar */}
+                  <div className="mb-4 flex-1">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Capacity</span>
+                      <span className="text-sm font-bold text-blue-600">{currentPlayers}/{maxPlayers}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          capacityPercent >= 90
+                            ? "bg-red-500"
+                            : capacityPercent >= 70
+                              ? "bg-yellow-500"
+                              : "bg-green-500"
+                        }`}
+                        style={{ width: `${capacityPercent}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{capacityPercent}% Full</p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="mt-auto space-y-2 border-t border-gray-200 pt-4">
+                    {showJoinLeave && (
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => join(sport._id)}
+                          disabled={buttonState.disabled}
+                          className="flex-1 text-xs"
+                        >
+                          {buttonState.text}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => leave(sport._id)}
+                          disabled={!alreadyJoined}
+                          className="flex-1 text-xs"
+                        >
+                          Leave
+                        </Button>
+                      </div>
+                    )}
+                    {isStaff && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white border-cyan-500 hover:from-cyan-600 hover:to-blue-600 hover:border-cyan-600 shadow-md hover:shadow-lg focus:ring-cyan-500 text-xs"
+                          onClick={() => onOpenPlayerModal(sport)}
+                        >
+                          Players
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="bg-gradient-to-r from-green-500 to-green-600 text-white border-green-500 hover:from-green-600 hover:to-green-700 hover:border-green-600 shadow-md hover:shadow-lg focus:ring-green-500 text-xs"
+                          onClick={() => onEdit(sport)}
+                        >
+                          Edit
+                        </Button>
+                        <Button variant="danger" onClick={() => del(sport._id)} className="text-xs col-span-2">
+                          Delete
+                        </Button>
+                      </div>
+                    )}
+                    {joinError && (
+                      <p className="text-xs text-red-600 bg-red-50 p-2 rounded">{joinError}</p>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
         )}
       </div>
 
