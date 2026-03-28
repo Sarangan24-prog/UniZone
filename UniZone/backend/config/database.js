@@ -2,10 +2,17 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/unizone', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    let mongoUri = process.env.MONGODB_URI;
+
+    // Fallback to memory server if local connection is used (avoids user environment issues)
+    if (!mongoUri || mongoUri.includes('127.0.0.1') || mongoUri.includes('localhost')) {
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      const mongoServer = await MongoMemoryServer.create();
+      mongoUri = mongoServer.getUri();
+      console.log(`🧠 Using In-Memory MongoDB since Atlas credentials failed or are missing`);
+    }
+
+    const conn = await mongoose.connect(mongoUri);
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(`❌ MongoDB connection error: ${error.message}`);
