@@ -250,7 +250,7 @@ export default function Sports() {
     const validationErrorMaxPlayers = validateMaxPlayers(form.maxPlayers, currentPlayers);
     const validationErrorCategory = !form.teamSizeCategory ? "Team Size Category is required" : "";
     const validationErrorStatus = !form.status ? "Status is required" : "";
-    const validationErrorDescription = form.description && normalizeSportName(form.description).length > 200 ? "Description must not exceed 200 characters" : "";
+    const validationErrorDescription = form.description && normalizeSportName(form.description).length > 20 ? "Description must not exceed 20 characters" : "";
 
     if (validationErrorName) {
       setSportNameError(validationErrorName);
@@ -455,7 +455,7 @@ export default function Sports() {
 
   const isCategoryValid = !!form.teamSizeCategory;
   const isStatusValid = !!form.status;
-  const isDescriptionValid = !form.description || form.description.trim().length <= 200;
+  const isDescriptionValid = !form.description || form.description.trim().length <= 20;
 
   const isFormValid = isSportNameValid && isMaxPlayersValid && isCategoryValid && isStatusValid && isDescriptionValid;
 
@@ -749,7 +749,7 @@ export default function Sports() {
                 onChange={(e) => {
                   const value = e.target.value;
                   setForm({ ...form, description: value });
-                  setDescriptionError(value.trim().length > 200 ? "Description must not exceed 200 characters" : "");
+                  setDescriptionError(value.trim().length > 20 ? "Description must not exceed 20 characters" : "");
                 }}
               />
               {descriptionError && <p className="mt-1 text-sm text-red-600">{descriptionError}</p>}
