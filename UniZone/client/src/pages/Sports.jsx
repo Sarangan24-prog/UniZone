@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../api/client";
 import PageShell from "../components/PageShell";
 import Card from "../components/Card";
@@ -13,6 +14,7 @@ import { useAuth } from "../auth/AuthContext";
 
 export default function Sports() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
   const isStaff = user?.role === "admin" || user?.role === "staff";
   const isStudent = user?.role === "student";
@@ -463,15 +465,27 @@ export default function Sports() {
     <PageShell
       title="Sports Management"
       subtitle="Discover, join, and manage campus sports activities"
-      right={isStaff && (
-        <Button
-          onClick={onCreate}
-          className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/40 border-none !px-6 !py-3 rounded-2xl transform active:scale-95 transition-all"
-        >
-          <span className="flex items-center gap-2">
-            <span className="text-lg">+</span> New Sport
-          </span>
-        </Button>
+      right={(
+        <div className="flex gap-3">
+          <Button
+            onClick={() => navigate('/sports/equipment')}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/40 border-none !px-6 !py-3 rounded-2xl transform active:scale-95 transition-all"
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-lg">⚾</span> Equipment Booking
+            </span>
+          </Button>
+          {isStaff && (
+            <Button
+              onClick={onCreate}
+              className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/40 border-none !px-6 !py-3 rounded-2xl transform active:scale-95 transition-all"
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-lg">+</span> New Sport
+              </span>
+            </Button>
+          )}
+        </div>
       )}
     >
       <Card glass className="mb-8">
