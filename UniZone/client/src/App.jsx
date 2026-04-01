@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Courses from "./pages/Courses";
 import Events from "./pages/Events";
 import Sports from "./pages/Sports";
+import Equipment from "./pages/Equipment";
 import Services from "./pages/Services";
 import Profile from "./pages/Profile";
 import AdminRequests from "./pages/AdminRequests";
@@ -38,6 +39,7 @@ if (loading) {
               <Route path="/courses" element={<ProtectedRoute><Courses /></ProtectedRoute>} />
               <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
               <Route path="/sports" element={<ProtectedRoute><Sports /></ProtectedRoute>} />
+              <Route path="/sports/equipment" element={<ProtectedRoute><Equipment /></ProtectedRoute>} />
               <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
