@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../../middleware/auth');
-const Assignment = require('../models/Assignment');
+const Assignment = require('../../models/course/Assignment');
 
 // GET all assignments
 router.get('/', authenticate, async (req, res) => {

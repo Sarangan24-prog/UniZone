@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../../middleware/auth');
-const Attendance = require('../models/Attendance');
+const Attendance = require('../../models/course/Attendance');
 const User = require('../../models/User');
 
 // GET attendance records — admin sees all, student sees own

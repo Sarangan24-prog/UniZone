@@ -7,7 +7,7 @@ const connectDB = async () => {
   }
 
   try {
-    let mongoUri = process.env.MONGODB_URI;
+    let mongoUri = process.env.MONGO_URI;
 
     // Fallback to memory server if local connection is used (avoids user environment issues)
     if (!mongoUri || mongoUri.includes('127.0.0.1') || mongoUri.includes('localhost')) {
@@ -17,7 +17,10 @@ const connectDB = async () => {
       console.log(`🧠 Using In-Memory MongoDB since Atlas credentials failed or are missing`);
     }
 
-    const conn = await mongoose.connect(mongoUri);
+    const conn = await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 10000,
+    });
+    
     // Mongoose connection events
     mongoose.connection.on('connected', () => {
       console.log('✅ Mongoose connected to DB Cluster');
@@ -29,10 +32,6 @@ const connectDB = async () => {
 
     mongoose.connection.on('disconnected', () => {
       console.warn('⚠️ Mongoose disconnected');
-    });
-
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 10000,
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
