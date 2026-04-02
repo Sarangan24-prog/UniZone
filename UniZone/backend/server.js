@@ -17,16 +17,14 @@ const courseRoutes = require("./routes/courseRoutes");
 const eventRoutes = require("./routes/eventRoutes");
 const sportRoutes = require("./routes/sportRoutes");
 const serviceRoutes = require("./routes/serviceRoutes");
-const timetableRoutes = require("./routes/timetableRoutes");
-const assignmentRoutes = require("./routes/assignmentRoutes");
-const studyMaterialRoutes = require("./routes/studyMaterialRoutes");
-const announcementRoutes = require("./routes/announcementRoutes");
-const attendanceRoutes = require("./routes/attendanceRoutes");
+const timetableRoutes = require("./routes/course/timetableRoutes");
+const assignmentRoutes = require("./routes/course/assignmentRoutes");
+const studyMaterialRoutes = require("./routes/course/studyMaterialRoutes");
+const announcementRoutes = require("./routes/course/announcementRoutes");
+const attendanceRoutes = require("./routes/course/attendanceRoutes");
 const categoryRoutes = require('./routes/categoryRoutes');
 const userRoutes = require('./routes/userRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
-// Connect to database
-connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
