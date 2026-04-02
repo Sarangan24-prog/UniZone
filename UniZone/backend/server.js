@@ -24,7 +24,6 @@ const announcementRoutes = require("./routes/course/announcementRoutes");
 const attendanceRoutes = require("./routes/course/attendanceRoutes");
 const userRoutes = require('./routes/userRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
-const userRoutes = require('./routes/userRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
 
 const app = express();

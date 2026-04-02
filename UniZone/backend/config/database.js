@@ -8,19 +8,27 @@ const connectDB = async () => {
 
   try {
     let mongoUri = process.env.MONGO_URI;
+    let conn;
 
-    // Fallback to memory server if local connection is used (avoids user environment issues)
-    if (!mongoUri || mongoUri.includes('127.0.0.1') || mongoUri.includes('localhost')) {
+    const connectToUri = async (uri) => {
+      return mongoose.connect(uri, {
+        serverSelectionTimeoutMS: 10000,
+      });
+    };
+
+    try {
+      conn = await connectToUri(mongoUri);
+    } catch (firstErr) {
+      console.warn(`⚠️ Primary MongoDB connection failed: ${firstErr.message}`);
+
       const { MongoMemoryServer } = require('mongodb-memory-server');
       const mongoServer = await MongoMemoryServer.create();
       mongoUri = mongoServer.getUri();
-      console.log(`🧠 Using In-Memory MongoDB since Atlas credentials failed or are missing`);
+      console.log(`🧠 Falling back to in-memory MongoDB (${mongoUri})`);
+
+      conn = await connectToUri(mongoUri);
     }
 
-    const conn = await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 10000,
-    });
-    
     // Mongoose connection events
     mongoose.connection.on('connected', () => {
       console.log('✅ Mongoose connected to DB Cluster');
@@ -32,10 +40,6 @@ const connectDB = async () => {
 
     mongoose.connection.on('disconnected', () => {
       console.warn('⚠️ Mongoose disconnected');
-    });
-
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 10000,
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
