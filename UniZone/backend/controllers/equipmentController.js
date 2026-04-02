@@ -189,3 +189,27 @@ exports.updateBookingStatus = async (req, res) => {
     res.status(500).json({ message: error.message || 'Failed to update booking status' });
   }
 };
+
+// DELETE a booking (Admin)
+exports.deleteBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const booking = await EquipmentBooking.findById(id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    // If booking was approved, restore stock before deleting
+    if (booking.status === 'Approved') {
+      const equip = await Equipment.findById(booking.equipment);
+      if (equip) {
+        equip.availableQuantity += booking.quantity;
+        await equip.save();
+      }
+    }
+
+    await EquipmentBooking.findByIdAndDelete(id);
+    res.json({ message: 'Booking deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message || 'Failed to delete booking' });
+  }
+};

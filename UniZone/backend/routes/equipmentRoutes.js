@@ -8,7 +8,8 @@ const {
   createBooking,
   getAllBookings,
   getMyBookings,
-  updateBookingStatus
+  updateBookingStatus,
+  deleteBooking
 } = require('../controllers/equipmentController');
 const { authenticate, authorize } = require('../middleware/auth');
 
@@ -25,5 +26,6 @@ router.post('/book', authenticate, createBooking);
 router.get('/bookings/my', authenticate, getMyBookings); // students
 router.get('/bookings', authenticate, authorize('admin', 'staff'), getAllBookings); // admins
 router.put('/bookings/:id/status', authenticate, authorize('admin', 'staff'), updateBookingStatus);
+router.delete('/bookings/:id', authenticate, authorize('admin', 'staff'), deleteBooking);
 
 module.exports = router;

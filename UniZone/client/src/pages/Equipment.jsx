@@ -171,6 +171,17 @@ export default function Equipment() {
     }
   };
 
+  // ---- Admin Delete Booking ----
+  const deleteBooking = async (bookingId) => {
+    if (!confirm("Are you sure you want to delete this booking?")) return;
+    try {
+      await api.delete(`/equipment/bookings/${bookingId}`);
+      loadData();
+    } catch (e) {
+      alert(e.response?.data?.message || "Delete failed");
+    }
+  };
+
   return (
     <PageShell
       title="Equipment Booking"
@@ -275,6 +286,7 @@ export default function Equipment() {
                             {b.status === 'Approved' && (
                               <button className="text-xs bg-blue-600/30 hover:bg-blue-500/50 text-blue-400 px-3 py-1.5 rounded-lg transition-colors font-black uppercase" onClick={() => updateBookingStatus(b._id, 'Returned')}>Mark Returned</button>
                             )}
+                            <button className="text-xs bg-rose-600/30 hover:bg-rose-500/50 text-rose-400 px-3 py-1.5 rounded-lg transition-colors font-black uppercase" onClick={() => deleteBooking(b._id)}>Delete</button>
                           </td>
                         )}
                       </tr>
