@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../api/client";
 import PageShell from "../components/PageShell";
 import Card from "../components/Card";
@@ -13,6 +14,7 @@ import { useAuth } from "../auth/AuthContext";
 
 export default function Sports() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
   const isStaff = user?.role === "admin" || user?.role === "staff";
   const isStudent = user?.role === "student";
@@ -250,7 +252,7 @@ export default function Sports() {
     const validationErrorMaxPlayers = validateMaxPlayers(form.maxPlayers, currentPlayers);
     const validationErrorCategory = !form.teamSizeCategory ? "Team Size Category is required" : "";
     const validationErrorStatus = !form.status ? "Status is required" : "";
-    const validationErrorDescription = form.description && normalizeSportName(form.description).length > 200 ? "Description must not exceed 200 characters" : "";
+    const validationErrorDescription = form.description && normalizeSportName(form.description).length > 20 ? "Description must not exceed 20 characters" : "";
 
     if (validationErrorName) {
       setSportNameError(validationErrorName);
@@ -455,7 +457,7 @@ export default function Sports() {
 
   const isCategoryValid = !!form.teamSizeCategory;
   const isStatusValid = !!form.status;
-  const isDescriptionValid = !form.description || form.description.trim().length <= 200;
+  const isDescriptionValid = !form.description || form.description.trim().length <= 20;
 
   const isFormValid = isSportNameValid && isMaxPlayersValid && isCategoryValid && isStatusValid && isDescriptionValid;
 
@@ -463,15 +465,27 @@ export default function Sports() {
     <PageShell
       title="Sports Management"
       subtitle="Discover, join, and manage campus sports activities"
-      right={isStaff && (
-        <Button
-          onClick={onCreate}
-          className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/40 border-none !px-6 !py-3 rounded-2xl transform active:scale-95 transition-all"
-        >
-          <span className="flex items-center gap-2">
-            <span className="text-lg">+</span> New Sport
-          </span>
-        </Button>
+      right={(
+        <div className="flex gap-3">
+          <Button
+            onClick={() => navigate('/sports/equipment')}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/40 border-none !px-6 !py-3 rounded-2xl transform active:scale-95 transition-all"
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-lg">⚾</span> Equipment Booking
+            </span>
+          </Button>
+          {isStaff && (
+            <Button
+              onClick={onCreate}
+              className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/40 border-none !px-6 !py-3 rounded-2xl transform active:scale-95 transition-all"
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-lg">+</span> New Sport
+              </span>
+            </Button>
+          )}
+        </div>
       )}
     >
       <Card glass className="mb-8">
@@ -749,7 +763,7 @@ export default function Sports() {
                 onChange={(e) => {
                   const value = e.target.value;
                   setForm({ ...form, description: value });
-                  setDescriptionError(value.trim().length > 200 ? "Description must not exceed 200 characters" : "");
+                  setDescriptionError(value.trim().length > 20 ? "Description must not exceed 20 characters" : "");
                 }}
               />
               {descriptionError && <p className="mt-1 text-sm text-red-600">{descriptionError}</p>}

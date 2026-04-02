@@ -12,7 +12,7 @@ import Loading from "../components/Loading";
 import TextArea from "../components/TextArea";
 import { useAuth } from "../auth/AuthContext";
 
-export default function Courses() {
+export default function Courses({ isEmbedded = false }) {
   const { user } = useAuth();
 
   const isStaff = user?.role === "admin" || user?.role === "staff";
@@ -30,7 +30,7 @@ export default function Courses() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [err, setErr] = useState("");
-  const [form, setForm] = useState({ title: "", code: "", department: "CSE", schedule: "", capacity: 50, description: "" });
+  const [form, setForm] = useState({ title: "", code: "", department: "CSE", schedule: "", capacity: 50, description: "", features: [] });
 
   const load = async () => {
     setLoading(true);
@@ -41,7 +41,7 @@ export default function Courses() {
 
   useEffect(() => { load(); }, []);
 
-  const resetForm = () => setForm({ title: "", code: "", department: "CSE", schedule: "", capacity: 50, description: "" });
+  const resetForm = () => setForm({ title: "", code: "", department: "CSE", schedule: "", capacity: 50, description: "", features: [] });
 
   const onCreate = () => {
     resetForm();
@@ -58,19 +58,34 @@ export default function Courses() {
       department: row.department || "CSE",
       schedule: row.schedule || "",
       capacity: row.capacity || 50,
-      description: row.description || ""
+      description: row.description || "",
+      features: row.features || []
     });
     setErr("");
     setOpen(true);
   };
 
   const save = async () => {
+    const cleanedFeatures = (form.features || []).map(f => f.trim()).filter(f => f.length > 0);
+    const submitData = { ...form, features: cleanedFeatures };
+
+    const errors = [];
+    if (!submitData.title || submitData.title.trim().length < 3 || submitData.title.length > 100) errors.push("Title must be 3-100 characters.");
+    if (!submitData.code || submitData.code.trim().length < 2 || submitData.code.length > 20 || !/^[a-zA-Z0-9-]+$/.test(submitData.code)) errors.push("Code must be 2-20 alphanumeric characters.");
+    if (!submitData.capacity || isNaN(submitData.capacity) || submitData.capacity < 1 || submitData.capacity > 1000) errors.push("Capacity must be between 1 and 1000.");
+    if (submitData.description && submitData.description.length > 500) errors.push("Description cannot exceed 500 characters.");
+    
+    if (errors.length > 0) {
+      setErr(errors.join("\n"));
+      return;
+    }
+
     try {
       setErr("");
       if (editing) {
-        await api.put(`/courses/${editing._id}`, form);
+        await api.put(`/courses/${editing._id}`, submitData);
       } else {
-        await api.post("/courses", form);
+        await api.post("/courses", submitData);
       }
       setOpen(false);
       load();
@@ -80,7 +95,6 @@ export default function Courses() {
   };
 
   const del = async (id) => {
-    // if (!confirm("Delete this course?")) return;
     await api.delete(`/courses/${id}`);
     load();
   };
@@ -91,10 +105,8 @@ export default function Courses() {
   const filtered = useMemo(() => {
     let out = [...items];
 
-    // filter by department
     if (department !== "all") out = out.filter(x => (x.department || "") === department);
 
-    // search by title/code
     if (q.trim()) {
       const qq = q.toLowerCase();
       out = out.filter(x =>
@@ -103,7 +115,6 @@ export default function Courses() {
       );
     }
 
-    // sort
     out.sort((a, b) => {
       if (sort === "created_desc") return new Date(b.createdAt) - new Date(a.createdAt);
       if (sort === "created_asc") return new Date(a.createdAt) - new Date(b.createdAt);
@@ -140,14 +151,18 @@ export default function Courses() {
     }
   ];
 
-  return (
-    <PageShell
-      title="Courses"
-      subtitle="Search, filter, sort, and manage courses"
-      right={isStaff && (
-        <Button onClick={onCreate}>New Course</Button>
+  const content = (
+    <>
+      {isEmbedded && (
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Course Registration</h2>
+            <p className="text-sm text-gray-500 mt-1">Search, filter, sort, and manage courses</p>
+          </div>
+          {isStaff && <Button onClick={onCreate}>New Course</Button>}
+        </div>
       )}
-    >
+
       <Card>
         <div className="grid gap-3 sm:grid-cols-3">
           <Input label="Search (title/code)" value={q} onChange={(e) => setQ(e.target.value)} placeholder="e.g. DBMS, CSE101" />
@@ -183,7 +198,13 @@ export default function Courses() {
         onClose={() => setOpen(false)}
         footer={(
           <div className="space-y-3">
-            {err && <div className="rounded-xl bg-red-50 border border-red-200 p-3"><p className="text-sm font-medium text-red-700">{err}</p></div>}
+            {err && (
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3">
+                <div className="text-sm font-medium text-red-700 space-y-1">
+                  {err.split("\n").map((e, i) => <p key={i}>• {e}</p>)}
+                </div>
+              </div>
+            )}
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button onClick={save}>Save</Button>
@@ -205,8 +226,52 @@ export default function Courses() {
           <div className="sm:col-span-2">
             <TextArea label="Description" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
+          <div className="sm:col-span-2 space-y-3 mt-2">
+            <label className="block text-sm font-medium text-gray-700">Course Features</label>
+            {form.features?.map((feat, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <div className="flex-1">
+                  <Input 
+                    value={feat} 
+                    onChange={(e) => {
+                      const newF = [...(form.features || [])];
+                      newF[i] = e.target.value;
+                      setForm({ ...form, features: newF });
+                    }} 
+                    placeholder="e.g. Weekly Live Q&A" 
+                  />
+                </div>
+                <Button variant="danger" onClick={() => {
+                  const newF = (form.features || []).filter((_, idx) => idx !== i);
+                  setForm({ ...form, features: newF });
+                }}>
+                  Remove
+                </Button>
+              </div>
+            ))}
+            <div>
+              <Button variant="outline" onClick={() => setForm({ ...form, features: [...(form.features || []), ""] })}>
+                + Add Feature
+              </Button>
+            </div>
+          </div>
         </div>
       </Modal>
+    </>
+  );
+
+  if (isEmbedded) return <div>{content}</div>;
+
+  return (
+    <PageShell
+      title="Courses"
+      subtitle="Search, filter, sort, and manage courses"
+      right={isStaff && (
+        <Button onClick={onCreate}>New Course</Button>
+      )}
+    >
+      {content}
     </PageShell>
   );
 }
+
