@@ -1,5 +1,5 @@
 export default function Select({ label, error, children, className = "", ...props }) {
-  const baseClass = "w-full rounded-2xl border-2 px-4 py-3.5 text-sm text-white outline-none transition-all duration-300 cursor-pointer appearance-none shadow-inner";
+  const baseClass = "w-full rounded-2xl border-2 px-4 py-3.5 text-sm text-white outline-none transition-all duration-300 cursor-pointer appearance-none shadow-inner [&>option]:bg-slate-800 [&>option]:text-white";
   const stateClass = error 
     ? "border-red-500/50 bg-red-500/5 focus:border-red-500 focus:ring-4 focus:ring-red-500/10" 
     : "border-white/5 bg-white/5 focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 hover:border-white/10 hover:bg-white/10";

@@ -14,9 +14,6 @@ const connectDB = async () => {
 
   if (!envUri) {
     console.warn("⚠️ MONGO_URI/MONGODB_URI is missing in .env. Falling back to in-memory MongoDB.");
-  }
-
-  if (!mongoUri || mongoUri.includes('127.0.0.1') || mongoUri.includes('localhost')) {
     mongoUri = await startMemoryMongo();
   }
 
@@ -35,10 +32,6 @@ const connectDB = async () => {
 
     mongoose.connection.on('disconnected', () => {
       console.warn('⚠️ Mongoose disconnected');
-    });
-
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 10000,
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
