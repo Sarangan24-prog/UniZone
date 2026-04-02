@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../../middleware/auth');
-const Timetable = require('../models/Timetable');
+const Timetable = require('../../models/course/Timetable');
 
 // GET all timetable entries
 router.get('/', authenticate, async (req, res) => {

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../../middleware/auth');
-const Announcement = require('../models/Announcement');
+const Announcement = require('../../models/course/Announcement');
 
 // GET all announcements
 router.get('/', authenticate, async (req, res) => {
