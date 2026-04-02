@@ -127,13 +127,13 @@ export default function Sports() {
     if (!user) return false;
     const currentPlayers = sport.players?.length || 0;
     const isFull = currentPlayers >= (sport.maxPlayers || 0);
-    const alreadyJoined = (sport.players || []).some(p => p._id === user._id);
+    const alreadyJoined = (sport.players || []).some(p => (p?._id || p) === user?._id);
     return !isFull && !alreadyJoined;
   };
 
   const getJoinButtonState = (sport) => {
     const isJoining = joiningStates[sport._id] || false;
-    const alreadyJoined = (sport.players || []).some(p => p._id === user._id);
+    const alreadyJoined = (sport.players || []).some(p => (p?._id || p) === user?._id);
     const currentPlayers = sport.players?.length || 0;
     const isFull = currentPlayers >= (sport.maxPlayers || 0);
 
@@ -362,44 +362,30 @@ export default function Sports() {
     }
 
     try {
-      setJoinErrors({ ...joinErrors, [id]: "" });
-      setJoiningStates({ ...joiningStates, [id]: true });
-
-      // Optimistic UI update
-      const updatedItems = items.map(s =>
-        s._id === id
-          ? { ...s, players: [...(s.players || []), user] }
-          : s
-      );
-      setItems(updatedItems);
+      setJoinErrors(prev => ({ ...prev, [id]: "" }));
+      setJoiningStates(prev => ({ ...prev, [id]: true }));
 
       const res = await api.post(`/sports/${id}/join`);
 
-      // Sync with backend response if available
       if (res.data) {
-        const syncedItems = items.map(s =>
-          s._id === id ? res.data : s
-        );
-        setItems(syncedItems);
+        setItems(prev => prev.map(s => s._id === id ? res.data : s));
       }
     } catch (e) {
       const errorMsg = e.response?.data?.message || "Join failed";
-      setJoinErrors({ ...joinErrors, [id]: errorMsg });
-
-      // Revert optimistic update on error
+      setJoinErrors(prev => ({ ...prev, [id]: errorMsg }));
       load();
     } finally {
-      setJoiningStates({ ...joiningStates, [id]: false });
+      setJoiningStates(prev => ({ ...prev, [id]: false }));
     }
   };
 
   const leave = async (id) => {
     try {
-      setJoinErrors({ ...joinErrors, [id]: "" });
+      setJoinErrors(prev => ({ ...prev, [id]: "" }));
       await api.post(`/sports/${id}/leave`);
       load();
     } catch (e) {
-      setJoinErrors({ ...joinErrors, [id]: e.response?.data?.message || "Leave failed" });
+      setJoinErrors(prev => ({ ...prev, [id]: e.response?.data?.message || "Leave failed" }));
     }
   };
 
@@ -562,7 +548,7 @@ export default function Sports() {
               const currentPlayers = sport.players?.length || 0;
               const maxPlayers = sport.maxPlayers || 0;
               const capacityPercent = maxPlayers > 0 ? Math.round((currentPlayers / maxPlayers) * 100) : 0;
-              const alreadyJoined = (sport.players || []).some(p => p._id === user?._id);
+              const alreadyJoined = (sport.players || []).some(p => (p?._id || p) === user?._id);
 
               return (
                 <Card
@@ -628,23 +614,26 @@ export default function Sports() {
                     {/* Action Buttons */}
                     <div className="mt-auto space-y-3 pt-6 border-t border-white/5">
                       {showJoinLeave && (
-                        <div className="flex gap-3">
-                          <Button
-                            onClick={() => join(sport._id)}
-                            disabled={buttonState.disabled}
-                            className={`flex-1 text-xs font-black rounded-xl py-3 shadow-lg transition-all ${!alreadyJoined ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20" : "bg-white/10 text-slate-400 border border-white/10"
+                        <div className="flex gap-3 w-full">
+                          {!alreadyJoined ? (
+                            <Button
+                              onClick={() => join(sport._id)}
+                              disabled={buttonState.disabled}
+                              className={`w-full text-xs font-black rounded-xl py-3 shadow-lg transition-all ${
+                                buttonState.disabled ? "bg-white/5 text-slate-500 border border-white/5" : "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20"
                               }`}
-                          >
-                            {buttonState.text}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => leave(sport._id)}
-                            disabled={!alreadyJoined}
-                            className="flex-1 text-xs font-black rounded-xl py-3 border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all"
-                          >
-                            Leave
-                          </Button>
+                            >
+                              {buttonState.text}
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              onClick={() => leave(sport._id)}
+                              className="w-full text-xs font-black rounded-xl py-3 border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all opacity-100"
+                            >
+                              Leave
+                            </Button>
+                          )}
                         </div>
                       )}
 

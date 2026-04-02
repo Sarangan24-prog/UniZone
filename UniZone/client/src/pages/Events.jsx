@@ -182,7 +182,7 @@ const unreg = async (event) => {
       subtitle="Search, filter by month, and manage events"
       right={isStaff && <Button onClick={onCreate}>New Event</Button>}
     >
-      <Card>
+      <Card glass>
         <div className="grid gap-3 sm:grid-cols-3">
           <Input label="Search (title/location)" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Sports day..." />
           <Select label="Month" value={month} onChange={(e) => setMonth(e.target.value)}>

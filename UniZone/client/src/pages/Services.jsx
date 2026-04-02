@@ -33,7 +33,18 @@ export default function Services() {
   const [errors, setErrors] = useState({});
 
   const [hostelForm, setHostelForm] = useState({ roomType: "Single", duration: 1 });
-  const [idCardForm, setIdCardForm] = useState({ reason: "New", bloodGroup: "A+" });
+  const [idCardForm, setIdCardForm] = useState({ 
+    reason: "New", 
+    fullName: "",
+    studentId: "",
+    department: "",
+    batch: "",
+    phone: "",
+    nicNumber: "",
+    lossDate: "",
+    lossLocation: "",
+    file: null
+  });
   const [certForm, setCertForm] = useState({ type: "Transcript", description: "" });
   const [complaintForm, setComplaintForm] = useState({ subject: "", description: "" });
   const [lostFoundForm, setLostFoundForm] = useState({ type: "Lost", itemName: "", description: "", location: "", date: "", contactInfo: "" });
@@ -100,7 +111,42 @@ export default function Services() {
         break;
       case 1:
         if (!idCardForm.reason) err("reason", "Please select a reason.");
-        if (!idCardForm.bloodGroup) err("bloodGroup", "Please select your blood group.");
+        if (!idCardForm.fullName) err("fullName", "Full Name is required.");
+        
+        if (idCardForm.reason === "New") {
+          if (!idCardForm.department || idCardForm.department.trim().length < 2) err("department", "Specify your department.");
+          if (!/^\d{4}(\/\d{2,4})?$/.test(idCardForm.batch)) err("batch", "Enter a valid batch/year (e.g. 2022 or 2022/23).");
+          
+          const phone = (idCardForm.phone || "").trim();
+          if (!/^\d{10}$/.test(phone)) err("phone", "Enter a valid 10-digit phone number (e.g. 0712345678).");
+          
+          const nic = (idCardForm.nicNumber || "").trim();
+          if (!/^(\d{9}[vVxX]|\d{12})$/.test(nic)) err("nicNumber", "Enter a valid NIC (9 digits + V/X or 12 digits).");
+          
+          if (!idCardForm.file) {
+            err("file", "A profile picture is required for new ID cards.");
+          } else if (idCardForm.file.size > 10 * 1024 * 1024) {
+            err("file", "Photo must be smaller than 10MB.");
+          } else if (!['image/jpeg', 'image/jpg', 'image/png'].includes(idCardForm.file.type)) {
+            err("file", "Only JPG, JPEG, and PNG images are allowed for profile photos.");
+          }
+        } else if (idCardForm.reason === "Lost") {
+          const studentId = (idCardForm.studentId || "").trim();
+          if (!/^[a-zA-Z0-9-]{5,15}$/.test(studentId)) err("studentId", "Enter a valid Student ID (5-15 alphanumeric chars).");
+
+          if (!idCardForm.lossDate) {
+              err("lossDate", "Date of loss is required.");
+          } else if (new Date(idCardForm.lossDate) > new Date()) {
+              err("lossDate", "Date of loss cannot be in the future.");
+          }
+          if (!idCardForm.lossLocation || idCardForm.lossLocation.trim().length < 3) err("lossLocation", "Specify where you lost your ID (min 3 chars).");
+          
+          if (!idCardForm.file) {
+            err("file", "Police report or affidavit scan is required.");
+          } else if (idCardForm.file.size > 10 * 1024 * 1024) {
+            err("file", "Document must be smaller than 10MB.");
+          }
+        }
         break;
       case 2:
         if (!certForm.type) err("type", "Please select a certificate type.");
@@ -165,16 +211,35 @@ export default function Services() {
     const endpoint = ENDPOINTS[activeTab];
     let payload = {};
     if (activeTab === 0) payload = hostelForm;
-    if (activeTab === 1) payload = idCardForm;
+    if (activeTab === 1) {
+      payload = new FormData();
+      // Only send fields applicable to the selected reason to avoid backend casting errors
+      const commonFields = ['reason', 'fullName', 'studentId'];
+      const newFields = ['department', 'batch', 'phone', 'nicNumber'];
+      const lostFields = ['lossDate', 'lossLocation'];
+      
+      const relevantKeys = [...commonFields, ...(idCardForm.reason === 'New' ? newFields : lostFields)];
+      
+      relevantKeys.forEach(key => {
+        if (idCardForm[key]) payload.append(key, idCardForm[key]);
+      });
+
+      if (idCardForm.file) {
+        payload.append('attachment', idCardForm.file);
+      }
+    }
     if (activeTab === 2) payload = certForm;
     if (activeTab === 3) payload = complaintForm;
     if (activeTab === 4) payload = lostFoundForm;
     if (activeTab === 5) payload = genericForm;
 
     try {
-      await api.post(`/services/${endpoint}`.replace('//', '/'), payload);
+      const config = activeTab === 1 ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+      await api.post(`/services/${endpoint}`.replace('//', '/'), payload, config);
       if (activeTab === 0) setHostelForm({ roomType: "Single", duration: 1 });
-      if (activeTab === 1) setIdCardForm({ reason: "New", bloodGroup: "A+" });
+      if (activeTab === 1) setIdCardForm({ 
+        reason: "New", fullName: "", studentId: "", department: "", batch: "", phone: "", nicNumber: "", lossDate: "", lossLocation: "", file: null
+      });
       if (activeTab === 2) setCertForm({ type: "Transcript", description: "" });
       if (activeTab === 3) setComplaintForm({ subject: "", description: "" });
       if (activeTab === 4) setLostFoundForm({ type: "Lost", itemName: "", description: "", location: "", date: "", contactInfo: "" });
@@ -255,14 +320,92 @@ export default function Services() {
         case 1:
           content = (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Select label="Reason" value={idCardForm.reason} error={errors.reason} onChange={e => { setIdCardForm({...idCardForm, reason: e.target.value}); clearErr('reason'); }}>
-                <option value="New">New</option>
-                <option value="Lost">Lost</option>
-                <option value="Damaged">Damaged</option>
+              <Select label="Application Reason" value={idCardForm.reason} error={errors.reason} onChange={e => { setIdCardForm({...idCardForm, reason: e.target.value}); clearErr('reason'); }}>
+                <option value="New">New ID Card</option>
+                <option value="Lost">Lost ID Card Replacement</option>
               </Select>
-              <Select label="Blood Group" value={idCardForm.bloodGroup} error={errors.bloodGroup} onChange={e => { setIdCardForm({...idCardForm, bloodGroup: e.target.value}); clearErr('bloodGroup'); }}>
-               {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => <option key={bg} value={bg}>{bg}</option>)}
-              </Select>
+              <Input label="Full Name" value={idCardForm.fullName} error={errors.fullName} onChange={e => { setIdCardForm({...idCardForm, fullName: e.target.value}); clearErr('fullName'); }} placeholder="Enter your full name" />
+              
+              {idCardForm.reason === "New" ? (
+                <>
+                  <Input label="Department" value={idCardForm.department} error={errors.department} onChange={e => { setIdCardForm({...idCardForm, department: e.target.value}); clearErr('department'); }} />
+                  <Input label="Batch/Year" value={idCardForm.batch} error={errors.batch} onChange={e => { setIdCardForm({...idCardForm, batch: e.target.value}); clearErr('batch'); }} />
+                  <Input label="Phone Number" value={idCardForm.phone} error={errors.phone} onChange={e => { setIdCardForm({...idCardForm, phone: e.target.value}); clearErr('phone'); }} />
+                  <Input label="National ID (NIC)" value={idCardForm.nicNumber} error={errors.nicNumber} onChange={e => { setIdCardForm({...idCardForm, nicNumber: e.target.value}); clearErr('nicNumber'); }} />
+                  <div className="sm:col-span-2">
+                    <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Profile Photo (Passport size)</label>
+                    <label className={`group relative flex flex-col items-center justify-center w-full min-h-[120px] rounded-[24px] border-2 border-dashed transition-all duration-300 cursor-pointer overflow-hidden ${
+                      idCardForm.file 
+                        ? 'border-blue-500/50 bg-blue-500/5 shadow-[0_0_30px_rgba(37,99,235,0.1)]' 
+                        : errors.file 
+                          ? 'border-red-500/50 bg-red-500/5 hover:bg-red-500/10' 
+                          : 'border-white/10 bg-white/5 hover:bg-white/[0.08] hover:border-white/20'
+                    }`}>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => { setIdCardForm({...idCardForm, file: e.target.files[0]}); clearErr('file'); }}
+                      />
+                      <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
+                        <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-2xl transition-transform duration-500 group-hover:scale-110 ${idCardForm.file ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-slate-400'}`}>
+                          {idCardForm.file ? (
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                          ) : (
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                          )}
+                        </div>
+                        <p className={`text-sm font-bold tracking-tight mb-1 ${idCardForm.file ? 'text-blue-400' : 'text-white'}`}>
+                          {idCardForm.file ? idCardForm.file.name : 'Click to upload your photo'}
+                        </p>
+                        <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">
+                          {idCardForm.file ? `${(idCardForm.file.size / 1024 / 1024).toFixed(2)} MB` : 'PNG or JPG (Max. 10MB)'}
+                        </p>
+                      </div>
+                    </label>
+                    {errors.file && <p className="mt-2 text-[10px] text-red-500 font-bold px-2">{errors.file}</p>}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Input label="Student ID" value={idCardForm.studentId} error={errors.studentId} onChange={e => { setIdCardForm({...idCardForm, studentId: e.target.value}); clearErr('studentId'); }} placeholder="e.g. STU12345" />
+                  <Input type="date" label="Date of Loss" value={idCardForm.lossDate} error={errors.lossDate} onChange={e => { setIdCardForm({...idCardForm, lossDate: e.target.value}); clearErr('lossDate'); }} />
+                  <Input label="Location Where Lost" value={idCardForm.lossLocation} error={errors.lossLocation} onChange={e => { setIdCardForm({...idCardForm, lossLocation: e.target.value}); clearErr('lossLocation'); }} />
+                  <div className="sm:col-span-2">
+                    <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Police Report / Affidavit (Scan/PDF)</label>
+                    <label className={`group relative flex flex-col items-center justify-center w-full min-h-[120px] rounded-[24px] border-2 border-dashed transition-all duration-300 cursor-pointer overflow-hidden ${
+                      idCardForm.file 
+                        ? 'border-emerald-500/50 bg-emerald-500/5 shadow-[0_0_30px_rgba(16,185,129,0.1)]' 
+                        : errors.file 
+                          ? 'border-red-500/50 bg-red-500/5 hover:bg-red-500/10' 
+                          : 'border-white/10 bg-white/5 hover:bg-white/[0.08] hover:border-white/20'
+                    }`}>
+                      <input 
+                        type="file" 
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={e => { setIdCardForm({...idCardForm, file: e.target.files[0]}); clearErr('file'); }}
+                      />
+                      <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
+                        <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-2xl transition-transform duration-500 group-hover:scale-110 ${idCardForm.file ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-slate-400'}`}>
+                          {idCardForm.file ? (
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                          ) : (
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          )}
+                        </div>
+                        <p className={`text-sm font-bold tracking-tight mb-1 ${idCardForm.file ? 'text-emerald-400' : 'text-white'}`}>
+                          {idCardForm.file ? idCardForm.file.name : 'Click to upload your documents'}
+                        </p>
+                        <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">
+                          {idCardForm.file ? `${(idCardForm.file.size / 1024 / 1024).toFixed(2)} MB` : 'PDF or Image (Max. 10MB)'}
+                        </p>
+                      </div>
+                    </label>
+                    {errors.file && <p className="mt-2 text-[10px] text-red-500 font-bold px-2">{errors.file}</p>}
+                  </div>
+                </>
+              )}
             </div>
           );
           break;
@@ -402,7 +545,37 @@ export default function Services() {
             
             <div className="text-slate-300 text-sm mb-5 flex-1">
               {activeTab === 0 && <p className="font-medium text-blue-100 bg-blue-500/10 p-2 rounded-lg inline-block">⏳ Duration: {item.duration} semester(s)</p>}
-              {activeTab === 1 && <p><span className="text-slate-500">Blood Group: </span> <span className="text-red-300 font-bold bg-red-500/10 px-2 py-0.5 rounded">{item.bloodGroup}</span></p>}
+              {activeTab === 1 && (
+                <div className="space-y-2 mt-2 bg-white/5 p-3 rounded-xl border border-white/5">
+                  <p className="flex justify-between"><span className="text-slate-500">Name:</span> <span className="text-white font-medium">{item.fullName}</span></p>
+                  <p className="flex justify-between"><span className="text-slate-500">ID:</span> <span className="text-white font-medium">{item.studentId}</span></p>
+                  {item.reason === "New" ? (
+                    <>
+                      <p className="flex justify-between"><span className="text-slate-500">Dept:</span> <span className="text-white font-medium">{item.department}</span></p>
+                      <p className="flex justify-between"><span className="text-slate-500">Batch:</span> <span className="text-white font-medium">{item.batch}</span></p>
+                      <p className="flex justify-between"><span className="text-slate-500">Phone:</span> <span className="text-white font-medium">{item.phone}</span></p>
+                      <p className="flex justify-between"><span className="text-slate-500">NIC:</span> <span className="text-white font-medium">{item.nicNumber}</span></p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="flex justify-between"><span className="text-slate-500">Lost Date:</span> <span className="text-white font-medium">{item.lossDate?.split('T')[0]}</span></p>
+                      <p className="flex justify-between"><span className="text-slate-500">Location:</span> <span className="text-white font-medium">{item.lossLocation}</span></p>
+                    </>
+                  )}
+                  {item.attachment && (
+                    <div className="mt-3 pt-3 border-t border-white/10">
+                      <a 
+                        href={`http://localhost:3000${item.attachment}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                      >
+                        <span>📎 View Attachment</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
               {activeTab === 2 && <p className="leading-relaxed mt-1 text-slate-400">{item.description || 'No additional details.'}</p>}
               {activeTab === 3 && <p className="line-clamp-4 leading-relaxed text-slate-400">{item.description}</p>}
               {activeTab === 4 && (
