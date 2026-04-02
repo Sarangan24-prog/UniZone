@@ -210,7 +210,6 @@ export default function AttendancePage() {
                   setSessionDate(e.target.value);
                   setDateError("");
                 }}
-                onChange={(e) => setSessionDate(e.target.value)}
               />
             </div>
 

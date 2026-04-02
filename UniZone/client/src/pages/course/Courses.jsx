@@ -447,18 +447,6 @@ export default function Courses() {
                 </Button>
               </div>
             ))}
-
-            <Button
-              variant="outline"
-              onClick={() =>
-                setForm({
-                  ...form,
-                  features: [...(form.features || []), ""],
-                })
-              }
-            >
-              Add Feature
-            </Button>
           </div>
         </div>
       </Modal>

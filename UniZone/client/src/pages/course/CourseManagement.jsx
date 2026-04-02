@@ -26,18 +26,17 @@ export default function CourseManagement() {
       title="Course Management"
       subtitle="Manage your courses, assignments, attendance, and schedules"
     >
-      <div className="course-management-page">
-        <div className="course-management-inner">
-          <aside className="course-management-sidebar">
-            <CourseSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-          </aside>
-          <main className="course-management-main">
-            
-           
+      <div className="flex flex-col md:flex-row gap-8">
+        <div className="w-full md:w-64 flex-shrink-0">
+          <CourseSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="animate-in slide-in-from-right-8 duration-500 zoom-in-[0.98]">
             <div className="course-management-content">
               <ActiveComponent isEmbedded />
             </div>
-          </main>
+          </div>
         </div>
       </div>
     </PageShell>

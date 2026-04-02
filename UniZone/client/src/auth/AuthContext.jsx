@@ -41,7 +41,13 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const value = useMemo(() => ({ user, isAuthed, login, register, logout }), [user, isAuthed]);
+  const updateUser = (data) => {
+    const updated = { ...user, ...data };
+    localStorage.setItem("user", JSON.stringify(updated));
+    setUser(updated);
+  };
+
+  const value = useMemo(() => ({ user, isAuthed, login, register, logout, updateUser }), [user, isAuthed]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
