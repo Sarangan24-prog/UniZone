@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const Service = require('../models/Service');
+const serviceController = require('../controllers/serviceController');
 
+// --- Generic Service Requests (existing) ---
 // Get all services (admin/staff)
 router.get('/', authenticate, authorize('admin', 'staff'), async (req, res) => {
   try {
@@ -50,5 +52,34 @@ router.put('/:id', authenticate, authorize('admin', 'staff'), async (req, res) =
     res.status(400).json({ message: error.message });
   }
 });
+
+// --- Hostel Requests ---
+router.post('/hostel', authenticate, authorize('student'), serviceController.createHostelRequest);
+router.get('/hostel/mine', authenticate, authorize('student'), serviceController.getMyHostelRequests);
+router.get('/hostel', authenticate, authorize('admin', 'staff'), serviceController.getAllHostelRequests);
+router.put('/hostel/:id', authenticate, authorize('admin', 'staff'), serviceController.updateHostelRequestStatus);
+
+// --- ID Card Requests ---
+router.post('/idcard', authenticate, authorize('student'), serviceController.createIdCardRequest);
+router.get('/idcard/mine', authenticate, authorize('student'), serviceController.getMyIdCardRequests);
+router.get('/idcard', authenticate, authorize('admin', 'staff'), serviceController.getAllIdCardRequests);
+router.put('/idcard/:id', authenticate, authorize('admin', 'staff'), serviceController.updateIdCardRequestStatus);
+
+// --- Certificate Requests ---
+router.post('/certificate', authenticate, authorize('student'), serviceController.createCertificateRequest);
+router.get('/certificate/mine', authenticate, authorize('student'), serviceController.getMyCertificateRequests);
+router.get('/certificate', authenticate, authorize('admin', 'staff'), serviceController.getAllCertificateRequests);
+router.put('/certificate/:id', authenticate, authorize('admin', 'staff'), serviceController.updateCertificateRequestStatus);
+
+// --- Complaints ---
+router.post('/complaint', authenticate, authorize('student'), serviceController.createComplaint);
+router.get('/complaint/mine', authenticate, authorize('student'), serviceController.getMyComplaints);
+router.get('/complaint', authenticate, authorize('admin', 'staff'), serviceController.getAllComplaints);
+router.put('/complaint/:id', authenticate, authorize('admin', 'staff'), serviceController.updateComplaintStatus);
+
+// --- Lost & Found ---
+router.post('/lostfound', authenticate, serviceController.createLostFoundItem);
+router.get('/lostfound', authenticate, serviceController.getAllLostFoundItems);
+router.put('/lostfound/:id', authenticate, serviceController.updateLostFoundItemStatus);
 
 module.exports = router;

@@ -15,6 +15,11 @@ export default function CourseSidebar({ activeTab, onTabChange }) {
           <h2 className="text-sm font-bold text-slate-300 tracking-wide uppercase">Course Management</h2>
         </div>
         <ul className="p-3 space-y-1">
+      <nav className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-900 to-gray-800">
+          <h2 className="text-sm font-bold text-white tracking-wide uppercase">Course Management</h2>
+        </div>
+        <ul className="p-2">
           {tabs.map((tab) => (
             <li key={tab.id}>
               <button

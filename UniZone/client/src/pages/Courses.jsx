@@ -251,6 +251,35 @@ export default function Courses({ isEmbedded = false }) {
             ))}
            
           </div>
+          <div className="sm:col-span-2 space-y-3 mt-2">
+            <label className="block text-sm font-medium text-gray-700">Course Features</label>
+            {form.features?.map((feat, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <div className="flex-1">
+                  <Input 
+                    value={feat} 
+                    onChange={(e) => {
+                      const newF = [...(form.features || [])];
+                      newF[i] = e.target.value;
+                      setForm({ ...form, features: newF });
+                    }} 
+                    placeholder="e.g. Weekly Live Q&A" 
+                  />
+                </div>
+                <Button variant="danger" onClick={() => {
+                  const newF = (form.features || []).filter((_, idx) => idx !== i);
+                  setForm({ ...form, features: newF });
+                }}>
+                  Remove
+                </Button>
+              </div>
+            ))}
+            <div>
+              <Button variant="outline" onClick={() => setForm({ ...form, features: [...(form.features || []), ""] })}>
+                + Add Feature
+              </Button>
+            </div>
+          </div>
         </div>
       </Modal>
     </>

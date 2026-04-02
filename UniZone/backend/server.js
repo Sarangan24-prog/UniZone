@@ -12,17 +12,20 @@ requiredEnvVars.forEach((envVar) => {
 });
 
 // Import routes
-const authRoutes = require('./routes/authRoutes');
-const courseRoutes = require('./routes/courseRoutes');
-const eventRoutes = require('./routes/eventRoutes');
-const sportRoutes = require('./routes/sportRoutes');
-const serviceRoutes = require('./routes/serviceRoutes');
-const userRoutes = require('./routes/userRoutes');
+const authRoutes = require("./routes/authRoutes");
+const courseRoutes = require("./routes/courseRoutes");
+const eventRoutes = require("./routes/eventRoutes");
+const sportRoutes = require("./routes/sportRoutes");
+const serviceRoutes = require("./routes/serviceRoutes");
 const timetableRoutes = require("./routes/course/timetableRoutes");
 const assignmentRoutes = require("./routes/course/assignmentRoutes");
 const studyMaterialRoutes = require("./routes/course/studyMaterialRoutes");
 const announcementRoutes = require("./routes/course/announcementRoutes");
 const attendanceRoutes = require("./routes/course/attendanceRoutes");
+const userRoutes = require('./routes/userRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+const userRoutes = require('./routes/userRoutes');
+const equipmentRoutes = require('./routes/equipmentRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,11 +36,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/courses', courseRoutes);
-app.use('/api/events', eventRoutes);
-app.use('/api/sports', sportRoutes);
-app.use('/api/services', serviceRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/courses", courseRoutes);
+app.use("/api/events", eventRoutes);
+app.use("/api/sports", sportRoutes);
+app.use("/api/services", serviceRoutes);
+app.use("/api/timetable", timetableRoutes);
+app.use("/api/assignments", assignmentRoutes);
+app.use("/api/materials", studyMaterialRoutes);
+app.use("/api/announcements", announcementRoutes);
+app.use("/api/attendance", attendanceRoutes);
 app.use('/api/users', userRoutes);
 app.use("/api/timetable", timetableRoutes);
 app.use("/api/assignments", assignmentRoutes);
@@ -45,6 +53,8 @@ app.use("/api/materials", studyMaterialRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/attendance", attendanceRoutes);
 
+app.use('/api/equipment', equipmentRoutes);
+app.use('/api/categories', categoryRoutes);
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({

@@ -5,7 +5,7 @@ export default function TextArea({ label, error, ...props }) {
     : "border-white/5 bg-white/5 focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 hover:border-white/10 hover:bg-white/10";
 
   return (
-    <label className="block">
+    <label className="block mb-1">
       {label && <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{label}</span>}
       <textarea
         {...props}
