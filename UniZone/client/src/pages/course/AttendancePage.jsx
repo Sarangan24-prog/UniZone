@@ -28,6 +28,8 @@ export default function AttendancePage() {
   );
   const [qrValue, setQrValue] = useState("");
   const [sessionMessage, setSessionMessage] = useState("");
+  const [sessionError, setSessionError] = useState("");
+  const [dateError, setDateError] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -46,10 +48,22 @@ export default function AttendancePage() {
   }, []);
 
   const generateQR = () => {
+    let hasError = false;
     if (!sessionCourse) {
-      setSessionMessage("Please select a course.");
-      return;
+      setSessionError("Please select a course.");
+      hasError = true;
+    } else {
+      setSessionError("");
     }
+
+    if (!sessionDate) {
+      setDateError("Please select a date.");
+      hasError = true;
+    } else {
+      setDateError("");
+    }
+
+    if (hasError) return;
 
     const selected = courses.find((c) => c._id === sessionCourse);
 
@@ -87,9 +101,9 @@ export default function AttendancePage() {
   }, [items, isAdmin]);
 
   const statusStyles = {
-    Present: "bg-green-50 text-green-700 border border-green-200",
-    Absent: "bg-red-50 text-red-700 border border-red-200",
-    Late: "bg-amber-50 text-amber-700 border border-amber-200",
+    Present: "bg-green-500/20 text-green-300 border border-green-500/30",
+    Absent: "bg-red-500/20 text-red-300 border border-red-500/30",
+    Late: "bg-amber-500/20 text-amber-300 border border-amber-500/30",
   };
 
   const formatDate = (d) =>
@@ -125,8 +139,8 @@ export default function AttendancePage() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Attendance Tracking</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <h2 className="text-2xl font-bold text-white">Attendance Tracking</h2>
+          <p className="text-sm text-slate-400 mt-1">
             {isAdmin
               ? "Generate QR attendance for students"
               : "View your attendance records"}
@@ -140,31 +154,31 @@ export default function AttendancePage() {
 
       {!isAdmin && stats && (
         <div className="grid gap-4 sm:grid-cols-4 mb-6">
-          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 text-center">
-            <p className="text-3xl font-bold text-gray-900">{stats.percentage}%</p>
-            <p className="text-xs font-semibold text-gray-500 mt-1 uppercase">Overall</p>
+          <div className="rounded-2xl border border-white/10 glass shadow-sm p-5 text-center">
+            <p className="text-3xl font-bold text-white">{stats.percentage}%</p>
+            <p className="text-xs font-semibold text-slate-400 mt-1 uppercase">Overall</p>
           </div>
-          <div className="rounded-2xl border border-green-100 bg-green-50/50 shadow-sm p-5 text-center">
-            <p className="text-3xl font-bold text-green-700">{stats.present}</p>
-            <p className="text-xs font-semibold text-green-600 mt-1 uppercase">Present</p>
+          <div className="rounded-2xl border border-green-100 bg-green-500/20/50 shadow-sm p-5 text-center">
+            <p className="text-3xl font-bold text-green-300">{stats.present}</p>
+            <p className="text-xs font-semibold text-green-400 mt-1 uppercase">Present</p>
           </div>
-          <div className="rounded-2xl border border-amber-100 bg-amber-50/50 shadow-sm p-5 text-center">
-            <p className="text-3xl font-bold text-amber-700">{stats.late}</p>
-            <p className="text-xs font-semibold text-amber-600 mt-1 uppercase">Late</p>
+          <div className="rounded-2xl border border-amber-100 bg-amber-500/20/50 shadow-sm p-5 text-center">
+            <p className="text-3xl font-bold text-amber-300">{stats.late}</p>
+            <p className="text-xs font-semibold text-amber-400 mt-1 uppercase">Late</p>
           </div>
-          <div className="rounded-2xl border border-red-100 bg-red-50/50 shadow-sm p-5 text-center">
-            <p className="text-3xl font-bold text-red-700">{stats.absent}</p>
-            <p className="text-xs font-semibold text-red-600 mt-1 uppercase">Absent</p>
+          <div className="rounded-2xl border border-red-100 bg-red-500/20/50 shadow-sm p-5 text-center">
+            <p className="text-3xl font-bold text-red-300">{stats.absent}</p>
+            <p className="text-xs font-semibold text-red-400 mt-1 uppercase">Absent</p>
           </div>
         </div>
       )}
 
       {isAdmin && (
-        <Card>
+        <Card glass>
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Generate Attendance QR</h3>
-              <p className="text-sm text-gray-500">
+              <h3 className="text-lg font-semibold text-white">Generate Attendance QR</h3>
+              <p className="text-sm text-slate-400">
                 Select a course and date, then generate a QR code for students to scan.
               </p>
             </div>
@@ -173,7 +187,11 @@ export default function AttendancePage() {
               <Select
                 label="Course"
                 value={sessionCourse}
-                onChange={(e) => setSessionCourse(e.target.value)}
+                error={sessionError}
+                onChange={(e) => {
+                  setSessionCourse(e.target.value);
+                  setSessionError("");
+                }}
               >
                 <option value="">Select Course</option>
                 {courses.map((c) => (
@@ -187,12 +205,16 @@ export default function AttendancePage() {
                 label="Date"
                 type="date"
                 value={sessionDate}
-                onChange={(e) => setSessionDate(e.target.value)}
+                error={dateError}
+                onChange={(e) => {
+                  setSessionDate(e.target.value);
+                  setDateError("");
+                }}
               />
             </div>
 
             {sessionMessage && (
-              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+              <div className="rounded-xl border border-blue-500/30 bg-blue-500/20 px-4 py-3 text-sm text-blue-300">
                 {sessionMessage}
               </div>
             )}
@@ -205,14 +227,14 @@ export default function AttendancePage() {
             </div>
 
             {qrValue && (
-              <div className="mt-4 flex flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white p-6">
+              <div className="mt-4 flex flex-col items-center justify-center rounded-2xl border border-white/20 glass p-6">
                 <QRCode value={qrValue} size={220} />
-                <p className="mt-4 text-sm text-gray-500 text-center">
+                <p className="mt-4 text-sm text-slate-400 text-center">
                   Students can scan this QR code to mark attendance.
                 </p>
 
                 {sessionCourse && (
-                  <p className="mt-2 text-sm text-gray-700 text-center">
+                  <p className="mt-2 text-sm text-slate-300 text-center">
                     {
                       courses.find((c) => c._id === sessionCourse)?.code
                     }{" "}
@@ -220,7 +242,7 @@ export default function AttendancePage() {
                   </p>
                 )}
 
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-slate-400">
                   Date: {sessionDate}
                 </p>
               </div>

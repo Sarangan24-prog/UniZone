@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../api/client";
-import Card from "../../components/Card";
 import Select from "../../components/Select";
 import Input from "../../components/Input";
 import Button from "../../components/Button";
 import Modal from "../../components/Modal";
-import EmptyState from "../../components/EmptyState";
-import Loading from "../../components/Loading";
 import TextArea from "../../components/TextArea";
 
 export default function StudyMaterialsPage() {
@@ -20,95 +17,208 @@ export default function StudyMaterialsPage() {
   const [filterType, setFilterType] = useState("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [err, setErr] = useState("");
+  const [errors, setErrors] = useState({});
   const [form, setForm] = useState({
-    course: "", title: "", description: "", type: "Notes", url: ""
+    course: "",
+    title: "",
+    description: "",
+    type: "Notes",
+    url: "",
   });
 
   const load = async () => {
-    setLoading(true);
-    const [mRes, cRes] = await Promise.all([
-      api.get("/materials"),
-      api.get("/courses")
-    ]);
-    setItems(mRes.data);
-    setCourses(cRes.data);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const [mRes, cRes] = await Promise.all([
+        api.get("/materials"),
+        api.get("/courses"),
+      ]);
+      setItems(mRes.data || []);
+      setCourses(cRes.data || []);
+    } catch (error) {
+      console.error("Failed to load materials:", error);
+      setItems([]);
+      setCourses([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
-  const resetForm = () => setForm({ course: "", title: "", description: "", type: "Notes", url: "" });
+  const resetForm = () =>
+    setForm({
+      course: "",
+      title: "",
+      description: "",
+      type: "Notes",
+      url: "",
+    });
 
-  const onCreate = () => { resetForm(); setEditing(null); setErr(""); setOpen(true); };
+  const onCreate = () => {
+    resetForm();
+    setEditing(null);
+    setErrors({});
+    setOpen(true);
+  };
 
   const onEdit = (row) => {
     setEditing(row);
     setForm({
-      course: row.course?._id || "", title: row.title || "",
-      description: row.description || "", type: row.type || "Notes", url: row.url || ""
+      course: row.course?._id || "",
+      title: row.title || "",
+      description: row.description || "",
+      type: row.type || "Notes",
+      url: row.url || "",
     });
-    setErr(""); setOpen(true);
+    setErrors({});
+    setOpen(true);
   };
 
   const save = async () => {
-    const errors = [];
-    if (!form.course) errors.push("Please select a course.");
-    if (!form.title || form.title.trim().length < 3 || form.title.length > 150) errors.push("Title must be 3-150 characters.");
-    if (form.url && !/^https?:\/\/.+/.test(form.url)) errors.push("Please provide a valid URL starting with http:// or https://");
-    if (form.description && form.description.length > 500) errors.push("Description cannot exceed 500 characters.");
+    const newErrors = {};
 
-    if (errors.length > 0) {
-      setErr(errors.join("\n"));
+    if (!form.course) {
+      newErrors.course = "Please select a course.";
+    }
+
+    if (
+      !form.title ||
+      form.title.trim().length < 3 ||
+      form.title.length > 150
+    ) {
+      newErrors.title = "Title must be 3-150 characters.";
+    }
+
+    if (!form.type) {
+      newErrors.type = "Please select a material type.";
+    }
+
+    if (
+      !form.url ||
+      form.url.trim().length === 0 ||
+      !/^https?:\/\/.+/.test(form.url)
+    ) {
+      newErrors.url =
+        "Valid URL starting with http:// or https:// is required.";
+    }
+
+    if (form.description && form.description.length > 500) {
+      newErrors.description = "Description cannot exceed 500 characters.";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     try {
-      setErr("");
+      setErrors({});
       if (editing) {
         await api.put(`/materials/${editing._id}`, form);
       } else {
         await api.post("/materials", form);
       }
-      setOpen(false); load();
-    } catch (e) { setErr(e.response?.data?.message || "Save failed"); }
+      setOpen(false);
+      load();
+    } catch (e) {
+      setErrors({ global: e.response?.data?.message || "Save failed" });
+    }
   };
 
-  const del = async (id) => { await api.delete(`/materials/${id}`); load(); };
+  const del = async (id) => {
+    try {
+      await api.delete(`/materials/${id}`);
+      load();
+    } catch (error) {
+      console.error("Delete failed:", error);
+    }
+  };
 
   const filtered = useMemo(() => {
     let out = [...items];
-    if (filterCourse !== "all") out = out.filter(x => (x.course?._id || "") === filterCourse);
-    if (filterType !== "all") out = out.filter(x => x.type === filterType);
+
+    if (filterCourse !== "all") {
+      out = out.filter((x) => (x.course?._id || "") === filterCourse);
+    }
+
+    if (filterType !== "all") {
+      out = out.filter((x) => x.type === filterType);
+    }
+
     out.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     return out;
   }, [items, filterCourse, filterType]);
 
   const typeStyles = {
-    Notes: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", icon: "📝" },
-    Slides: { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200", icon: "📊" },
-    Video: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", icon: "🎥" },
-    Link: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200", icon: "🔗" },
-    PDF: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", icon: "📄" },
+    Notes: {
+      bg: "bg-blue-500/10",
+      pill: "bg-blue-500/20 text-blue-300",
+      icon: "📝",
+    },
+    Slides: {
+      bg: "bg-purple-500/10",
+      pill: "bg-purple-500/20 text-purple-300",
+      icon: "📊",
+    },
+    Video: {
+      bg: "bg-red-500/10",
+      pill: "bg-red-500/20 text-red-300",
+      icon: "🎥",
+    },
+    Link: {
+      bg: "bg-green-500/10",
+      pill: "bg-green-500/20 text-green-300",
+      icon: "🔗",
+    },
+    PDF: {
+      bg: "bg-amber-500/10",
+      pill: "bg-amber-500/20 text-amber-300",
+      icon: "📄",
+    },
   };
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+    <div className="text-white">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Study Materials</h2>
-          <p className="text-sm text-gray-500 mt-1">Access course notes, slides, videos, and links</p>
+          <h2 className="text-2xl font-bold text-white sm:text-3xl">
+            Study Materials
+          </h2>
+          <p className="mt-1 text-sm text-slate-300">
+            Access course notes, slides, videos, and links
+          </p>
         </div>
-        {isAdmin && <Button onClick={onCreate}>Add Material</Button>}
+
+        {isAdmin && (
+          <Button onClick={onCreate} className="rounded-2xl">
+            Add Material
+          </Button>
+        )}
       </div>
 
-      <Card>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Select label="Filter by Course" value={filterCourse} onChange={e => setFilterCourse(e.target.value)}>
+      <div className="mb-5 rounded-[28px] border border-white/10 bg-white/5 p-5 shadow-xl backdrop-blur-md">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Select
+            label="Filter by Course"
+            value={filterCourse}
+            onChange={(e) => setFilterCourse(e.target.value)}
+          >
             <option value="all">All Courses</option>
-            {courses.map(c => <option key={c._id} value={c._id}>{c.code} - {c.title}</option>)}
+            {courses.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.code} - {c.title}
+              </option>
+            ))}
           </Select>
-          <Select label="Filter by Type" value={filterType} onChange={e => setFilterType(e.target.value)}>
+
+          <Select
+            label="Filter by Type"
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+          >
             <option value="all">All Types</option>
             <option value="Notes">Notes</option>
             <option value="Slides">Slides</option>
@@ -117,45 +227,99 @@ export default function StudyMaterialsPage() {
             <option value="PDF">PDF</option>
           </Select>
         </div>
-      </Card>
+      </div>
 
-      <div className="mt-4">
-        {loading ? <Loading /> : filtered.length === 0 ? (
-          <EmptyState title="No study materials" subtitle="Try changing filters or add new material." />
+      <div className="rounded-[30px] border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-md">
+        {loading ? (
+          <div className="flex min-h-[260px] items-center justify-center">
+            <div className="text-center">
+              <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-slate-600 border-t-white" />
+              <p className="text-base font-medium text-slate-200">Loading...</p>
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex min-h-[260px] items-center justify-center">
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5 text-2xl">
+                📚
+              </div>
+              <h3 className="text-xl font-bold text-white">
+  No study materials
+</h3>
+<p className="mt-2 text-sm text-slate-300">
+  Try changing filters or add new material.
+</p>
+            </div>
+          </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {filtered.map((m) => {
               const style = typeStyles[m.type] || typeStyles.Notes;
+
               return (
-                <div key={m._id} className="rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
-                  <div className={`px-5 py-3 ${style.bg} border-b ${style.border}`}>
-                    <div className="flex items-center justify-between">
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide ${style.text}`}>
-                        <span>{style.icon}</span> {m.type}
+                <div
+                  key={m._id}
+                  className="overflow-hidden rounded-[24px] border border-white/10 bg-white/5 shadow-lg backdrop-blur-md transition hover:-translate-y-1 hover:shadow-2xl"
+                >
+                  <div className={`px-5 py-4 ${style.bg}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <span
+                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${style.pill}`}
+                      >
+                        <span>{style.icon}</span>
+                        {m.type}
                       </span>
                     </div>
                   </div>
+
                   <div className="p-5">
-                    <h3 className="text-base font-bold text-gray-900 mb-1">{m.title}</h3>
-                    <p className="text-xs font-medium text-gray-500 mb-2">
+                    <h3 className="mb-1 text-lg font-bold text-white">
+                      {m.title}
+                    </h3>
+
+                    <p className="mb-2 text-xs font-medium text-slate-400">
                       {m.course ? `${m.course.code} - ${m.course.title}` : "—"}
                     </p>
+
                     {m.description && (
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{m.description}</p>
+                      <p className="mb-3 line-clamp-3 text-sm leading-6 text-slate-300">
+                        {m.description}
+                      </p>
                     )}
+
                     {m.uploadedBy && (
-                      <p className="text-xs text-gray-400 mb-3">Uploaded by: {m.uploadedBy.name}</p>
+                      <p className="mb-3 text-xs text-slate-500">
+                        Uploaded by: {m.uploadedBy.name}
+                      </p>
                     )}
+
                     {m.url && (
-                      <a href={m.url} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 mb-3">
+                      <a
+                        href={m.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-blue-400 transition hover:text-blue-300"
+                      >
                         🔗 Open Resource
                       </a>
                     )}
+
                     {isAdmin && (
-                      <div className="flex gap-2 pt-3 border-t border-gray-100">
-                        <Button variant="outline" className="flex-1" onClick={() => onEdit(m)}>Edit</Button>
-                        <Button variant="danger" className="flex-1" onClick={() => del(m._id)}>Delete</Button>
+                      <div className="flex gap-2 border-t border-white/10 pt-4">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => onEdit(m)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="danger"
+                          className="flex-1"
+                          onClick={() => del(m._id)}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -166,37 +330,81 @@ export default function StudyMaterialsPage() {
         )}
       </div>
 
-      <Modal open={open} title={editing ? "Edit Material" : "Add Material"} onClose={() => setOpen(false)}
-        footer={<div className="space-y-3">
-          {err && (
-            <div className="rounded-xl bg-red-50 border border-red-200 p-3">
-              <div className="text-sm font-medium text-red-700 space-y-1">
-                {err.split("\n").map((e, i) => <p key={i}>• {e}</p>)}
+      <Modal
+        open={open}
+        title={editing ? "Edit Material" : "Add Material"}
+        onClose={() => setOpen(false)}
+        footer={
+          <div className="space-y-3">
+            {errors.global && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+                <p className="text-sm font-medium text-red-400">
+                  • {errors.global}
+                </p>
               </div>
+            )}
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={save}>Save</Button>
             </div>
-          )}
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={save}>Save</Button>
           </div>
-        </div>}
+        }
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <Select label="Course" value={form.course} onChange={e => setForm({ ...form, course: e.target.value })}>
+          <Select
+            label="Course"
+            value={form.course}
+            error={errors.course}
+            onChange={(e) => setForm({ ...form, course: e.target.value })}
+          >
             <option value="">Select Course</option>
-            {courses.map(c => <option key={c._id} value={c._id}>{c.code} - {c.title}</option>)}
+            {courses.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.code} - {c.title}
+              </option>
+            ))}
           </Select>
-          <Input label="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-          <Select label="Type" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
+
+          <Input
+            label="Title"
+            value={form.title}
+            error={errors.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+          />
+
+          <Select
+            label="Type"
+            value={form.type}
+            error={errors.type}
+            onChange={(e) => setForm({ ...form, type: e.target.value })}
+          >
             <option value="Notes">Notes</option>
             <option value="Slides">Slides</option>
             <option value="Video">Video</option>
             <option value="Link">Link</option>
             <option value="PDF">PDF</option>
           </Select>
-          <Input label="URL / Link" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://..." />
+
+          <Input
+            label="URL / Link"
+            value={form.url}
+            error={errors.url}
+            onChange={(e) => setForm({ ...form, url: e.target.value })}
+            placeholder="https://..."
+          />
+
           <div className="sm:col-span-2">
-            <TextArea label="Description" rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+            <TextArea
+              label="Description"
+              rows={3}
+              value={form.description}
+              error={errors.description}
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
+            />
           </div>
         </div>
       </Modal>

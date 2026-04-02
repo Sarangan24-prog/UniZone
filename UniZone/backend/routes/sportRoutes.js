@@ -60,7 +60,8 @@ router.post('/:id/join', authenticate, authorize('student', 'admin', 'staff'), a
     }
     sport.players.push(req.user._id);
     await sport.save();
-    res.json(sport);
+    const updated = await Sport.findById(req.params.id).populate('players', 'name email');
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -74,7 +75,8 @@ router.post('/:id/leave', authenticate, authorize('student', 'admin', 'staff'), 
 
     sport.players = sport.players.filter(id => id.toString() !== req.user._id.toString());
     await sport.save();
-    res.json(sport);
+    const updated = await Sport.findById(req.params.id).populate('players', 'name email');
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -1,26 +1,47 @@
 const mongoose = require("mongoose");
 
+const startMemoryMongo = async () => {
+  const { MongoMemoryServer } = require('mongodb-memory-server');
+  const mongoServer = await MongoMemoryServer.create();
+  const uri = mongoServer.getUri();
+  console.log(`🧠 In-memory MongoDB URI: ${uri}`);
+  return uri;
+};
+
 const connectDB = async () => {
-  if (!process.env.MONGO_URI) {
-    console.error("❌ MONGO_URI is missing in .env");
-    process.exit(1);
+  const envUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+  let mongoUri = envUri;
+
+  if (!mongoUri) {
+    console.warn("⚠️ MONGO_URI/MONGODB_URI is missing in .env. Falling back to in-memory MongoDB.");
+    mongoUri = await startMemoryMongo();
   }
 
   try {
-    let mongoUri = process.env.MONGO_URI;
+    let conn;
 
-    // Fallback to memory server if local connection is used (avoids user environment issues)
-    if (!mongoUri || mongoUri.includes('127.0.0.1') || mongoUri.includes('localhost')) {
+    const connectToUri = async (uri) => {
+      if (!uri || typeof uri !== "string") {
+        throw new Error("MongoDB URI must be a non-empty string");
+      }
+      return mongoose.connect(uri, {
+        serverSelectionTimeoutMS: 10000,
+      });
+    };
+
+    try {
+      conn = await connectToUri(mongoUri);
+    } catch (firstErr) {
+      console.warn(`⚠️ Primary MongoDB connection failed: ${firstErr.message}`);
+
       const { MongoMemoryServer } = require('mongodb-memory-server');
       const mongoServer = await MongoMemoryServer.create();
       mongoUri = mongoServer.getUri();
-      console.log(`🧠 Using In-Memory MongoDB since Atlas credentials failed or are missing`);
+      console.log(`🧠 Falling back to in-memory MongoDB (${mongoUri})`);
+
+      conn = await connectToUri(mongoUri);
     }
 
-    const conn = await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 10000,
-    });
-    
     // Mongoose connection events
     mongoose.connection.on('connected', () => {
       console.log('✅ Mongoose connected to DB Cluster');
@@ -37,8 +58,20 @@ const connectDB = async () => {
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {
+    console.warn(`⚠️ Primary MongoDB connection failed: ${error.message}`);
+
+    if (envUri) {
+      console.log('🧠 Falling back to in-memory MongoDB server...');
+      mongoUri = await startMemoryMongo();
+      const conn = await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 10000,
+      });
+      console.log(`✅ MongoDB Connected (in-memory): ${conn.connection.host}`);
+      return conn;
+    }
+
     console.error(`❌ Error connecting to MongoDB: ${error.message}`);
-    throw error; // Let server.js handle the fatal error
+    throw error;
   }
 };
 

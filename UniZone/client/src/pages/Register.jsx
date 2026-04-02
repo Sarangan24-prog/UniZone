@@ -42,6 +42,9 @@ export default function Register() {
   return (
     <PageShell title="Create Account" subtitle="Join the vibrant UniZone community">
       <div className="mx-auto max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <div className="flex justify-center mb-8 animate-in zoom-in-90 duration-1000">
+          <img src="/logo.png" alt="UniZone Logo" className="w-24 h-24 object-contain filter drop-shadow-2xl" />
+        </div>
         <Card glass className="border-4 border-white/20 shadow-2xl">
           <form className="space-y-6" onSubmit={onSubmit}>
             <div className="space-y-4">
@@ -50,23 +53,23 @@ export default function Register() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="John Doe"
-                className="bg-white/50 backdrop-blur-sm border-2 border-emerald-100 focus:border-emerald-500 rounded-2xl p-4 font-bold"
-              />
+                className="bg-white/5 backdrop-blur-md border-2 border-white/10 focus:border-emerald-500 rounded-2xl p-4 font-bold text-white placeholder:text-slate-500"
+              / >
               <Input
                 label="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="john@example.com"
-                className="bg-white/50 backdrop-blur-sm border-2 border-emerald-100 focus:border-emerald-500 rounded-2xl p-4 font-bold"
-              />
+                className="bg-white/5 backdrop-blur-md border-2 border-white/10 focus:border-emerald-500 rounded-2xl p-4 font-bold text-white placeholder:text-slate-500"
+              / >
               <Input
                 label="Password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••"
-                className="bg-white/50 backdrop-blur-sm border-2 border-emerald-100 focus:border-emerald-500 rounded-2xl p-4 font-bold"
-              />
+                className="bg-white/5 backdrop-blur-md border-2 border-white/10 focus:border-emerald-500 rounded-2xl p-4 font-bold text-white placeholder:text-slate-500"
+              / >
 
               <Select
                 label="Role"

@@ -4,7 +4,7 @@ require("dotenv").config();
 const connectDB = require("./config/database");
 
 // Environment variable validation
-const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "ROLE_CREATE_KEY"];
+const requiredEnvVars = ["MONGODB_URI", "JWT_SECRET", "ROLE_CREATE_KEY"];
 requiredEnvVars.forEach((envVar) => {
   if (!process.env[envVar]) {
     console.warn(`⚠️ Warning: Missing environment variable ${envVar}. Some features may fail.`);
@@ -22,17 +22,29 @@ const assignmentRoutes = require("./routes/course/assignmentRoutes");
 const studyMaterialRoutes = require("./routes/course/studyMaterialRoutes");
 const announcementRoutes = require("./routes/course/announcementRoutes");
 const attendanceRoutes = require("./routes/course/attendanceRoutes");
-const categoryRoutes = require('./routes/categoryRoutes');
 const userRoutes = require('./routes/userRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
+
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Ensure upload directories exist
+const uploadDirs = ['uploads', 'uploads/id-cards', 'uploads/avatars'];
+uploadDirs.forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -48,6 +60,9 @@ app.use("/api/attendance", attendanceRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/categories', categoryRoutes);
+
+// Test route to verify server registration
+app.get('/api/test-users', (req, res) => res.json({ message: "User routes are accessible" }));
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({
@@ -60,7 +75,10 @@ app.get("/api/health", (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ message: "Something went wrong!" });
+  res.status(err.status || 500).json({ 
+    message: err.message || "Something went wrong!",
+    error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
 });
 
 // 404 handler

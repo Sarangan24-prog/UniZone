@@ -29,14 +29,20 @@ export default function Courses({ isEmbedded = false }) {
   // create/edit modal
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [err, setErr] = useState("");
+  const [errors, setErrors] = useState({});
   const [form, setForm] = useState({ title: "", code: "", department: "CSE", schedule: "", capacity: 50, description: "", features: [] });
 
   const load = async () => {
     setLoading(true);
-    const res = await api.get("/courses");
-    setItems(res.data);
-    setLoading(false);
+    try {
+      const res = await api.get("/courses");
+      setItems(res.data || []);
+    } catch (e) {
+      console.error("Failed to load courses:", e);
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -46,7 +52,7 @@ export default function Courses({ isEmbedded = false }) {
   const onCreate = () => {
     resetForm();
     setEditing(null);
-    setErr("");
+    setErrors({});
     setOpen(true);
   };
 
@@ -61,7 +67,7 @@ export default function Courses({ isEmbedded = false }) {
       description: row.description || "",
       features: row.features || []
     });
-    setErr("");
+    setErrors({});
     setOpen(true);
   };
 
@@ -69,19 +75,21 @@ export default function Courses({ isEmbedded = false }) {
     const cleanedFeatures = (form.features || []).map(f => f.trim()).filter(f => f.length > 0);
     const submitData = { ...form, features: cleanedFeatures };
 
-    const errors = [];
-    if (!submitData.title || submitData.title.trim().length < 3 || submitData.title.length > 100) errors.push("Title must be 3-100 characters.");
-    if (!submitData.code || submitData.code.trim().length < 2 || submitData.code.length > 20 || !/^[a-zA-Z0-9-]+$/.test(submitData.code)) errors.push("Code must be 2-20 alphanumeric characters.");
-    if (!submitData.capacity || isNaN(submitData.capacity) || submitData.capacity < 1 || submitData.capacity > 1000) errors.push("Capacity must be between 1 and 1000.");
-    if (submitData.description && submitData.description.length > 500) errors.push("Description cannot exceed 500 characters.");
+    const newErrors = {};
+    if (!submitData.title || submitData.title.trim().length < 3 || submitData.title.length > 100) newErrors.title = "Title must be 3-100 characters.";
+    if (!submitData.code || submitData.code.trim().length < 2 || submitData.code.length > 20 || !/^[a-zA-Z0-9-]+$/.test(submitData.code)) newErrors.code = "Code must be 2-20 alphanumeric characters.";
+    if (!submitData.department) newErrors.department = "Department is required.";
+    if (!submitData.capacity || isNaN(submitData.capacity) || submitData.capacity < 1 || submitData.capacity > 1000) newErrors.capacity = "Capacity must be between 1 and 1000.";
+    if (!submitData.schedule || submitData.schedule.trim().length === 0) newErrors.schedule = "Schedule is required.";
+    if (submitData.description && submitData.description.length > 500) newErrors.description = "Description cannot exceed 500 characters.";
     
-    if (errors.length > 0) {
-      setErr(errors.join("\n"));
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     try {
-      setErr("");
+      setErrors({});
       if (editing) {
         await api.put(`/courses/${editing._id}`, submitData);
       } else {
@@ -90,7 +98,7 @@ export default function Courses({ isEmbedded = false }) {
       setOpen(false);
       load();
     } catch (e) {
-      setErr(e.response?.data?.message || "Save failed");
+      setErrors({ global: e.response?.data?.message || "Save failed" });
     }
   };
 
@@ -156,14 +164,14 @@ export default function Courses({ isEmbedded = false }) {
       {isEmbedded && (
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Course Registration</h2>
-            <p className="text-sm text-gray-500 mt-1">Search, filter, sort, and manage courses</p>
+            <h2 className="text-2xl font-bold text-white">Course Registration</h2>
+            <p className="text-sm text-slate-400 mt-1">Search, filter, sort, and manage courses</p>
           </div>
           {isStaff && <Button onClick={onCreate}>New Course</Button>}
         </div>
       )}
 
-      <Card>
+      <Card glass>
         <div className="grid gap-3 sm:grid-cols-3">
           <Input label="Search (title/code)" value={q} onChange={(e) => setQ(e.target.value)} placeholder="e.g. DBMS, CSE101" />
           <Select label="Department" value={department} onChange={(e) => setDepartment(e.target.value)}>
@@ -186,9 +194,9 @@ export default function Courses({ isEmbedded = false }) {
         {loading ? (
           <Loading />
         ) : filtered.length === 0 ? (
-          <EmptyState title="No courses found" subtitle="Try another search or change filters." />
+          <EmptyState glass title="No courses found" subtitle="Try another search or change filters." />
         ) : (
-          <Table columns={columns} rows={filtered} />
+          <Table glass columns={columns} rows={filtered} />
         )}
       </div>
 
@@ -198,11 +206,9 @@ export default function Courses({ isEmbedded = false }) {
         onClose={() => setOpen(false)}
         footer={(
           <div className="space-y-3">
-            {err && (
-              <div className="rounded-xl bg-red-50 border border-red-200 p-3">
-                <div className="text-sm font-medium text-red-700 space-y-1">
-                  {err.split("\n").map((e, i) => <p key={i}>• {e}</p>)}
-                </div>
+            {errors.global && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+                <p className="text-sm font-medium text-red-400">• {errors.global}</p>
               </div>
             )}
             <div className="flex justify-end gap-3">
@@ -213,18 +219,43 @@ export default function Courses({ isEmbedded = false }) {
         )}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <Input label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <Input label="Code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
-          <Select label="Department" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
+          <Input label="Title" value={form.title} error={errors.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <Input label="Code" value={form.code} error={errors.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
+          <Select label="Department" value={form.department} error={errors.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
             <option value="CSE">CSE</option>
             <option value="EEE">EEE</option>
             <option value="MECH">MECH</option>
             <option value="CIVIL">CIVIL</option>
           </Select>
-          <Input label="Capacity" type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: +e.target.value })} />
-          <Input label="Schedule" value={form.schedule} onChange={(e) => setForm({ ...form, schedule: e.target.value })} placeholder="Mon 10-12" />
+          <Input label="Capacity" type="number" value={form.capacity} error={errors.capacity} onChange={(e) => setForm({ ...form, capacity: +e.target.value })} />
+          <Input label="Schedule" value={form.schedule} error={errors.schedule} onChange={(e) => setForm({ ...form, schedule: e.target.value })} placeholder="Mon 10-12" />
           <div className="sm:col-span-2">
-            <TextArea label="Description" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <TextArea label="Description" rows={3} value={form.description} error={errors.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          </div>
+          <div className="sm:col-span-2 space-y-3 mt-2">
+            <label className="block text-sm font-medium text-slate-300">Course Features</label>
+            {form.features?.map((feat, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <div className="flex-1">
+                  <Input 
+                    value={feat} 
+                    onChange={(e) => {
+                      const newF = [...(form.features || [])];
+                      newF[i] = e.target.value;
+                      setForm({ ...form, features: newF });
+                    }} 
+                    placeholder="e.g. Weekly Live Q&A" 
+                  />
+                </div>
+                <Button variant="danger" onClick={() => {
+                  const newF = (form.features || []).filter((_, idx) => idx !== i);
+                  setForm({ ...form, features: newF });
+                }}>
+                  Remove
+                </Button>
+              </div>
+            ))}
+           
           </div>
           <div className="sm:col-span-2 space-y-3 mt-2">
             <label className="block text-sm font-medium text-gray-700">Course Features</label>

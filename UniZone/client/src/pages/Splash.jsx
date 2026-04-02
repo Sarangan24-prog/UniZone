@@ -23,9 +23,9 @@ export default function Splash({ onFinish }) {
           Welcome to UniZone 🎓
         </p>
 
-        {/* Icon */}
-        <div className="text-5xl mt-6 animate-bounce">
-          📚
+        {/* Logo Icon */}
+        <div className="flex justify-center mt-6 animate-bounce">
+          <img src="/logo.png" alt="UniZone Logo" className="w-24 h-24 object-contain filter drop-shadow-2xl" />
         </div>
 
       </div>
