@@ -147,9 +147,15 @@ export default function Sports() {
   const load = async () => {
     setLoading(true);
     setJoinErrors({});
-    const res = await api.get("/sports");
-    setItems(res.data);
-    setLoading(false);
+    try {
+      const res = await api.get("/sports");
+      setItems(res.data || []);
+    } catch (e) {
+      console.error("Failed to load sports:", e);
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);

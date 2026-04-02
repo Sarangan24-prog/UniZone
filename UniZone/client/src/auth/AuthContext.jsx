@@ -12,10 +12,15 @@ export function AuthProvider({ children }) {
   const isAuthed = !!localStorage.getItem("token");
 
   const login = async (email, password) => {
-    const res = await api.post("/auth/login", { email, password });
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("user", JSON.stringify(res.data.user));
-    setUser(res.data.user);
+    try {
+      const res = await api.post("/auth/login", { email, password });
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+      setUser(res.data.user);
+    } catch (error) {
+      console.error("AuthContext login error:", error);
+      throw error;
+    }
   };
 
   const register = async ({ name, email, password, role = "student", roleCreateKey = "" }) => {

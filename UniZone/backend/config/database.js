@@ -14,6 +14,7 @@ const connectDB = async () => {
 
   if (!envUri) {
     console.warn("⚠️ MONGO_URI/MONGODB_URI is missing in .env. Falling back to in-memory MongoDB.");
+    mongoUri = await startMemoryMongo();
   }
 
   try {

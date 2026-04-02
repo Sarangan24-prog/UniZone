@@ -9,12 +9,12 @@ export default function CourseSidebar({ activeTab, onTabChange }) {
   ];
 
   return (
-    <aside className="course-sidebar">
-      <nav className="course-sidebar-card">
-        <header className="course-sidebar-header">
-          <h2>Course Management</h2>
-        </header>
-        <ul className="course-sidebar-list">
+    <aside className="w-full lg:w-64 shrink-0">
+      <nav className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-900 to-gray-800">
+          <h2 className="text-sm font-bold text-white tracking-wide uppercase">Course Management</h2>
+        </div>
+        <ul className="p-2">
           {tabs.map((tab) => (
             <li key={tab.id}>
               <button

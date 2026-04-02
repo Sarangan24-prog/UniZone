@@ -4,7 +4,7 @@ require("dotenv").config();
 const connectDB = require("./config/database");
 
 // Environment variable validation
-const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "ROLE_CREATE_KEY"];
+const requiredEnvVars = ["MONGODB_URI", "JWT_SECRET", "ROLE_CREATE_KEY"];
 requiredEnvVars.forEach((envVar) => {
   if (!process.env[envVar]) {
     console.warn(`⚠️ Warning: Missing environment variable ${envVar}. Some features may fail.`);
@@ -46,12 +46,6 @@ app.use("/api/materials", studyMaterialRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use('/api/users', userRoutes);
-app.use("/api/timetable", timetableRoutes);
-app.use("/api/assignments", assignmentRoutes);
-app.use("/api/materials", studyMaterialRoutes);
-app.use("/api/announcements", announcementRoutes);
-app.use("/api/attendance", attendanceRoutes);
-
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/categories', categoryRoutes);
 // Health check
