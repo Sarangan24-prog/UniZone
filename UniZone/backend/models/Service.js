@@ -9,7 +9,6 @@ const serviceSchema = new mongoose.Schema({
   category: {
     type: String,
     required: [true, 'Category is required'],
-    enum: ['IT', 'Library', 'Housing', 'Finance'],
     trim: true
   },
   description: {
