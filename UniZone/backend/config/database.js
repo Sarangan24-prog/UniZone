@@ -16,15 +16,30 @@ const connectDB = async () => {
     console.warn("⚠️ MONGO_URI/MONGODB_URI is missing in .env. Falling back to in-memory MongoDB.");
   }
 
-  if (!mongoUri || mongoUri.includes('127.0.0.1') || mongoUri.includes('localhost')) {
-    mongoUri = await startMemoryMongo();
-  }
-
   try {
-    const conn = await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 10000,
-    });
+    let mongoUri = process.env.MONGO_URI;
+    let conn;
 
+    const connectToUri = async (uri) => {
+      return mongoose.connect(uri, {
+        serverSelectionTimeoutMS: 10000,
+      });
+    };
+
+    try {
+      conn = await connectToUri(mongoUri);
+    } catch (firstErr) {
+      console.warn(`⚠️ Primary MongoDB connection failed: ${firstErr.message}`);
+
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      const mongoServer = await MongoMemoryServer.create();
+      mongoUri = mongoServer.getUri();
+      console.log(`🧠 Falling back to in-memory MongoDB (${mongoUri})`);
+
+      conn = await connectToUri(mongoUri);
+    }
+
+    // Mongoose connection events
     mongoose.connection.on('connected', () => {
       console.log('✅ Mongoose connected to DB Cluster');
     });
@@ -35,10 +50,6 @@ const connectDB = async () => {
 
     mongoose.connection.on('disconnected', () => {
       console.warn('⚠️ Mongoose disconnected');
-    });
-
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 10000,
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
