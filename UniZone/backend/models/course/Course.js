@@ -31,6 +31,10 @@ const courseSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  features: [{
+    type: String,
+    trim: true
+  }],
   enrolledStudents: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

@@ -1,5 +1,8 @@
-export default function Select({ label, children, className = "", ...props }) {
-  const baseClass = "w-full rounded-2xl border-2 border-white/5 bg-white/5 px-4 py-3.5 text-sm text-white outline-none transition-all duration-300 focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 hover:border-white/10 hover:bg-white/10 shadow-inner cursor-pointer appearance-none";
+export default function Select({ label, error, children, className = "", ...props }) {
+  const baseClass = "w-full rounded-2xl border-2 px-4 py-3.5 text-sm outline-none transition-all duration-300 shadow-inner cursor-pointer appearance-none [&>option]:bg-slate-800 [&>option]:text-white";
+  const errorClass = error 
+    ? "border-red-500/50 bg-red-500/5 text-red-100 focus:border-red-500 focus:ring-4 focus:ring-red-500/20" 
+    : "border-white/5 bg-white/5 text-white focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 hover:border-white/10 hover:bg-white/10";
 
   return (
     <label className="block mb-1">
@@ -7,7 +10,7 @@ export default function Select({ label, children, className = "", ...props }) {
       <div className="relative">
         <select
           {...props}
-          className={`${baseClass} ${className}`.trim()}
+          className={`${baseClass} ${errorClass} ${className}`.trim()}
         >
           {children}
         </select>
@@ -17,6 +20,7 @@ export default function Select({ label, children, className = "", ...props }) {
           </svg>
         </div>
       </div>
+      {error && <span className="mt-1.5 block text-[11px] font-bold text-red-400 px-1 animate-in slide-in-from-top-1">{error}</span>}
     </label>
   );
 }

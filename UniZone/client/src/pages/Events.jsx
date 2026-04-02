@@ -61,6 +61,7 @@ export default function Events() {
       const payload = { ...form, dateTime: new Date(form.dateTime) };
       if (editing) await api.put(`/events/${editing._id}`, payload);
       else await api.post("/events", payload);
+       alert("Event saved successfully")
       setOpen(false);
       load();
     } catch (e) {
@@ -70,12 +71,56 @@ export default function Events() {
 
   const del = async (id) => {
     // if (!confirm("Delete this event?")) return;
+    if (!window.confirm("Are you sure you want to delete this event?")) return;
     await api.delete(`/events/${id}`);
     load();
   };
 
-  const reg = async (id) => { await api.post(`/events/${id}/register`); load(); };
-  const unreg = async (id) => { await api.post(`/events/${id}/unregister`); load(); };
+  //const reg = async (id) => { await api.post(`/events/${id}/register`); load(); };
+  //const unreg = async (id) => { await api.post(`/events/${id}/unregister`); load(); };
+  //Student registration with checks
+  const reg = async (event) => {
+  const registeredCount = event.registeredUsers?.length || 0;
+
+  if (registeredCount >= event.capacity) {
+    alert("Event is full");
+    return;
+  }
+
+  const alreadyRegistered = event.registeredUsers?.some(
+    (u) => u === user?._id || u?._id === user?._id
+  );
+
+  if (alreadyRegistered) {
+    alert("You are already registered");
+    return;
+  }
+
+  if (new Date(event.dateTime) < new Date()) {
+    alert("Event already finished");
+    return;
+  }
+
+  await api.post(`/events/${event._id}/register`);
+  load();
+};
+
+const unreg = async (event) => {
+  const alreadyRegistered = event.registeredUsers?.some(
+    (u) => u === user?._id || u?._id === user?._id
+  );
+
+  if (!alreadyRegistered) {
+    alert("You are not registered for this event");
+    return;
+  }
+
+  if (!window.confirm("Are you sure you want to unregister?")) return;
+
+  await api.post(`/events/${event._id}/unregister`);
+  load();
+};
+//End of student registration with checks
 
   const filtered = useMemo(() => {
     let out = [...items];
@@ -116,8 +161,8 @@ export default function Events() {
         <div className="flex flex-wrap gap-2">
           {isStudent && (
             <>
-              <Button onClick={() => reg(r._id)}>Register</Button>
-              <Button variant="outline" onClick={() => unreg(r._id)}>Unregister</Button>
+              <Button onClick={() => reg(r)}>Register</Button>
+              <Button variant="outline" onClick={() => unreg(r)}>Unregister</Button>
             </>
           )}
           {isStaff && (

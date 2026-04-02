@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Splash from "./pages/Splash";
 import { AuthProvider } from "./auth/AuthContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import RoleRoute from "./routes/RoleRoute";
@@ -9,6 +11,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Courses from "./pages/Courses";
+import CourseManagement from "./pages/course/CourseManagement";
 import Events from "./pages/Events";
 import Sports from "./pages/Sports";
 import Equipment from "./pages/Equipment";
@@ -18,6 +21,11 @@ import AdminRequests from "./pages/AdminRequests";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
+  const [loading, setLoading] = useState(true);
+
+if (loading) {
+  return <Splash onFinish={() => setLoading(false)} />;
+}
   return (
     <AuthProvider>
       <BrowserRouter>
@@ -56,3 +64,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+
