@@ -10,7 +10,7 @@ import Footer from "./components/Footer";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-import Courses from "./pages/Courses";
+import CourseManagement from "./pages/course/CourseManagement";
 import Events from "./pages/Events";
 import Sports from "./pages/Sports";
 import Equipment from "./pages/Equipment";
@@ -63,3 +63,4 @@ if (loading) {
     </AuthProvider>
   );
 }
+
