@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import PageShell from "../components/PageShell";
 import Card from "../components/Card";
@@ -27,57 +27,99 @@ export default function Register() {
       nav("/");
     } catch (error) {
       console.error("Registration error:", error);
-      console.error("Error response:", error.response);
-      
-      let errorMessage = "Register failed";
-      
+      let errorMessage = "Registration failed";
+
       if (!error.response) {
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-        const baseUrl = apiUrl.replace('/api', '');
-        errorMessage = `Cannot connect to server. Please make sure the backend is running on ${baseUrl}`;
+        errorMessage = "Cannot connect to server. Please try again later.";
       } else if (error.response.data) {
-        errorMessage = error.response.data.message || 
-                       error.response.data.error || 
-                       error.response.data.msg ||
-                       `Error: ${error.response.status} ${error.response.statusText}`;
-      } else {
-        errorMessage = `Error: ${error.response.status} ${error.response.statusText}`;
+        errorMessage = error.response.data.message || "Registration failed";
       }
-      
+
       setErr(errorMessage);
     }
   };
 
   return (
-    <PageShell title="Get Started" subtitle="Create your UniZone account">
-      <div className="mx-auto max-w-md">
-        <Card>
-          <form className="space-y-5" onSubmit={onSubmit}>
-            <Input label="Full Name" value={name} onChange={(e)=>setName(e.target.value)} placeholder="John Doe" />
-            <Input label="Email" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="john@example.com" />
-            <Input label="Password" type="password" value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="••••••" />
+    <PageShell title="Create Account" subtitle="Join the vibrant UniZone community">
+      <div className="mx-auto max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <Card glass className="border-4 border-white/20 shadow-2xl">
+          <form className="space-y-6" onSubmit={onSubmit}>
+            <div className="space-y-4">
+              <Input
+                label="Full Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="John Doe"
+                className="bg-white/50 backdrop-blur-sm border-2 border-emerald-100 focus:border-emerald-500 rounded-2xl p-4 font-bold"
+              />
+              <Input
+                label="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="john@example.com"
+                className="bg-white/50 backdrop-blur-sm border-2 border-emerald-100 focus:border-emerald-500 rounded-2xl p-4 font-bold"
+              />
+              <Input
+                label="Password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••"
+                className="bg-white/50 backdrop-blur-sm border-2 border-emerald-100 focus:border-emerald-500 rounded-2xl p-4 font-bold"
+              />
 
-            <Select label="Role" value={role} onChange={(e)=>setRole(e.target.value)}>
-              <option value="student">Student</option>
-              <option value="staff">Staff</option>
-              <option value="admin">Admin</option>
-            </Select>
+              <Select
+                label="Role"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="bg-white/50 backdrop-blur-sm border-2 border-emerald-100 focus:border-emerald-500 rounded-2xl p-4 font-bold"
+              >
+                <option value="student">Student</option>
+                <option value="staff">Staff</option>
+                <option value="admin">Admin</option>
+              </Select>
 
-            {(role === "admin" || role === "staff") && (
-              <div>
-                <Input 
-                  label="Role Create Key (required for admin/staff)" 
-                  value={roleCreateKey} 
-                  onChange={(e)=>setRoleCreateKey(e.target.value)} 
-                  placeholder="Enter admin/staff key" 
-                  required
-                />
-                <p className="mt-1 text-xs text-gray-500">You need a valid key to create an admin or staff account.</p>
+              {(role === "admin" || role === "staff") && (
+                <div className="space-y-2 translate-y-2 animate-in fade-in slide-in-from-top-2">
+                  <Input
+                    label="Role Create Key"
+                    value={roleCreateKey}
+                    onChange={(e) => setRoleCreateKey(e.target.value)}
+                    placeholder="Enter security key"
+                    required
+                    className="bg-orange-50 border-2 border-orange-200 focus:border-orange-500 rounded-2xl p-4 font-bold"
+                  />
+                  <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest px-2">Key required for higher roles</p>
+                </div>
+              )}
+            </div>
+
+            {err && (
+              <div className="rounded-2xl bg-red-500/10 border-2 border-red-500/20 p-4">
+                <p className="text-sm font-black text-red-400">{err}</p>
               </div>
             )}
 
-            {err && <div className="rounded-xl bg-red-50 border border-red-200 p-3"><p className="text-sm font-medium text-red-700">{err}</p></div>}
-            <Button className="w-full" type="submit">Create Account</Button>
+            <div className="space-y-4 pt-2">
+              <Button
+                className="w-full bg-gradient-to-br from-emerald-500 to-teal-700 hover:from-emerald-600 hover:to-teal-800 text-white font-black py-4 rounded-2xl shadow-xl shadow-emerald-500/20 transform active:scale-95 transition-all text-lg"
+                type="submit"
+              >
+                Create Account
+              </Button>
+
+              <div className="text-center">
+                <p className="text-sm font-bold text-slate-400">
+                  Already have an account?{" "}
+                  <Link
+                    to="/login"
+                    className="text-emerald-400 hover:text-emerald-300 font-black underline underline-offset-4 decoration-2 decoration-emerald-400/30 hover:decoration-emerald-400 transition-all"
+                  >
+                    Login Now
+                  </Link>
+                </p>
+              </div>
+            </div>
           </form>
         </Card>
       </div>

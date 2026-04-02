@@ -80,4 +80,49 @@ router.post('/:id/leave', authenticate, authorize('student', 'admin', 'staff'), 
   }
 });
 
+// Register player by admin/staff
+router.post('/:id/register', authenticate, authorize('admin', 'staff'), async (req, res) => {
+  try {
+    const { studentId, role, jerseyNumber, notes } = req.body;
+    if (!studentId) return res.status(400).json({ message: 'Student is required' });
+    if (!role) return res.status(400).json({ message: 'Player role is required' });
+
+    const sport = await Sport.findById(req.params.id);
+    if (!sport) return res.status(404).json({ message: 'Sport not found' });
+
+    const currentPlayers = sport.players.length;
+    if (currentPlayers >= sport.maxPlayers) {
+      return res.status(400).json({ message: 'Sport team is full' });
+    }
+
+    if (sport.players.some(id => id.toString() === studentId.toString())) {
+      return res.status(400).json({ message: 'Student is already registered for this sport' });
+    }
+
+    const User = require('../models/User');
+    const student = await User.findById(studentId);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    if (student.role !== 'student') {
+      return res.status(400).json({ message: 'Only students can be registered for sport teams' });
+    }
+
+    sport.players.push(student._id);
+    sport.playerRegistrations = sport.playerRegistrations || [];
+    sport.playerRegistrations.push({
+      player: student._id,
+      role,
+      jerseyNumber: jerseyNumber ? Number(jerseyNumber) : undefined,
+      notes: notes ? notes.trim() : undefined
+    });
+
+    await sport.save();
+
+    const updatedSport = await Sport.findById(req.params.id).populate('players', 'name email');
+    res.json(updatedSport);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;
