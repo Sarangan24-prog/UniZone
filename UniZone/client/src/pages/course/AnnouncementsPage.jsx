@@ -18,7 +18,7 @@ export default function AnnouncementsPage() {
   const [filterPriority, setFilterPriority] = useState("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [err, setErr] = useState("");
+  const [errors, setErrors] = useState({});
   const [form, setForm] = useState({
     title: "", content: "", priority: "Medium", targetAudience: "All"
   });
@@ -34,7 +34,7 @@ export default function AnnouncementsPage() {
 
   const resetForm = () => setForm({ title: "", content: "", priority: "Medium", targetAudience: "All" });
 
-  const onCreate = () => { resetForm(); setEditing(null); setErr(""); setOpen(true); };
+  const onCreate = () => { resetForm(); setEditing(null); setErrors({}); setOpen(true); };
 
   const onEdit = (row) => {
     setEditing(row);
@@ -42,28 +42,30 @@ export default function AnnouncementsPage() {
       title: row.title || "", content: row.content || "",
       priority: row.priority || "Medium", targetAudience: row.targetAudience || "All"
     });
-    setErr(""); setOpen(true);
+    setErrors({}); setOpen(true);
   };
 
   const save = async () => {
-    const errors = [];
-    if (!form.title || form.title.trim().length < 5 || form.title.length > 200) errors.push("Title must be 5-200 characters.");
-    if (!form.content || form.content.trim().length < 10 || form.content.length > 2000) errors.push("Content must be 10-2000 characters.");
+    const newErrors = {};
+    if (!form.title || form.title.trim().length < 5 || form.title.length > 200) newErrors.title = "Title must be 5-200 characters.";
+    if (!form.priority) newErrors.priority = "Priority is required.";
+    if (!form.targetAudience) newErrors.targetAudience = "Target Audience is required.";
+    if (!form.content || form.content.trim().length < 10 || form.content.length > 2000) newErrors.content = "Content must be 10-2000 characters.";
 
-    if (errors.length > 0) {
-      setErr(errors.join("\n"));
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     try {
-      setErr("");
+      setErrors({});
       if (editing) {
         await api.put(`/announcements/${editing._id}`, form);
       } else {
         await api.post("/announcements", form);
       }
       setOpen(false); load();
-    } catch (e) { setErr(e.response?.data?.message || "Save failed"); }
+    } catch (e) { setErrors({ global: e.response?.data?.message || "Save failed" }); }
   };
 
   const del = async (id) => { await api.delete(`/announcements/${id}`); load(); };
@@ -75,10 +77,10 @@ export default function AnnouncementsPage() {
   }, [items, filterPriority]);
 
   const priorityStyles = {
-    Low: { bg: "bg-gray-50", border: "border-gray-200", text: "text-gray-700", dot: "bg-gray-400" },
-    Medium: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", dot: "bg-blue-500" },
-    High: { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", dot: "bg-orange-500" },
-    Urgent: { bg: "bg-red-50", border: "border-red-200", text: "text-red-700", dot: "bg-red-500" },
+    Low: { bg: "bg-white/5", border: "border-white/20", text: "text-slate-300", dot: "bg-gray-400" },
+    Medium: { bg: "bg-blue-500/20", border: "border-blue-500/30", text: "text-blue-300", dot: "bg-blue-500" },
+    High: { bg: "bg-orange-500/20", border: "border-orange-500/30", text: "text-orange-300", dot: "bg-orange-500" },
+    Urgent: { bg: "bg-red-500/20", border: "border-red-500/30", text: "text-red-300", dot: "bg-red-500" },
   };
 
   const formatDate = (d) => new Date(d).toLocaleDateString("en-US", {
@@ -89,13 +91,13 @@ export default function AnnouncementsPage() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Announcements & Notices</h2>
-          <p className="text-sm text-gray-500 mt-1">Stay updated with latest announcements</p>
+          <h2 className="text-2xl font-bold text-white">Announcements & Notices</h2>
+          <p className="text-sm text-slate-400 mt-1">Stay updated with latest announcements</p>
         </div>
         {isAdmin && <Button onClick={onCreate}>New Announcement</Button>}
       </div>
 
-      <Card>
+      <Card glass>
         <Select label="Filter by Priority" value={filterPriority} onChange={e => setFilterPriority(e.target.value)}>
           <option value="all">All Priorities</option>
           <option value="Low">Low</option>
@@ -107,30 +109,30 @@ export default function AnnouncementsPage() {
 
       <div className="mt-4">
         {loading ? <Loading /> : filtered.length === 0 ? (
-          <EmptyState title="No announcements" subtitle="No announcements to show." />
+          <EmptyState glass title="No announcements" subtitle="No announcements to show." />
         ) : (
           <div className="space-y-4">
             {filtered.map((a) => {
               const pStyle = priorityStyles[a.priority] || priorityStyles.Medium;
               return (
-                <div key={a._id} className={`rounded-2xl border ${pStyle.border} bg-white shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden`}>
+                <div key={a._id} className={`rounded-2xl border ${pStyle.border} glass shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden`}>
                   <div className={`px-6 py-3 ${pStyle.bg} flex items-center justify-between`}>
                     <div className="flex items-center gap-2">
                       <span className={`w-2.5 h-2.5 rounded-full ${pStyle.dot}`}></span>
                       <span className={`text-xs font-bold uppercase tracking-wide ${pStyle.text}`}>{a.priority} Priority</span>
                     </div>
-                    <span className="text-xs text-gray-500 font-medium">{formatDate(a.createdAt)}</span>
+                    <span className="text-xs text-slate-400 font-medium">{formatDate(a.createdAt)}</span>
                   </div>
                   <div className="p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">{a.title}</h3>
-                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap mb-3">{a.content}</p>
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                    <h3 className="text-lg font-bold text-white mb-2">{a.title}</h3>
+                    <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap mb-3">{a.content}</p>
+                    <div className="flex items-center justify-between pt-3 border-t border-white/10">
                       <div className="flex items-center gap-3">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-gray-100 text-xs font-semibold text-gray-600">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-white/10 text-xs font-semibold text-slate-300">
                           👥 {a.targetAudience}
                         </span>
                         {a.postedBy && (
-                          <span className="text-xs text-gray-400">Posted by: {a.postedBy.name}</span>
+                          <span className="text-xs text-slate-500">Posted by: {a.postedBy.name}</span>
                         )}
                       </div>
                       {isAdmin && (
@@ -150,11 +152,9 @@ export default function AnnouncementsPage() {
 
       <Modal open={open} title={editing ? "Edit Announcement" : "New Announcement"} onClose={() => setOpen(false)}
         footer={<div className="space-y-3">
-          {err && (
-            <div className="rounded-xl bg-red-50 border border-red-200 p-3">
-              <div className="text-sm font-medium text-red-700 space-y-1">
-                {err.split("\n").map((e, i) => <p key={i}>• {e}</p>)}
-              </div>
+          {errors.global && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+              <p className="text-sm font-medium text-red-400">• {errors.global}</p>
             </div>
           )}
           <div className="flex justify-end gap-3">
@@ -164,20 +164,20 @@ export default function AnnouncementsPage() {
         </div>}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <Input label="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-          <Select label="Priority" value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })}>
+          <Input label="Title" value={form.title} error={errors.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+          <Select label="Priority" value={form.priority} error={errors.priority} onChange={e => setForm({ ...form, priority: e.target.value })}>
             <option value="Low">Low</option>
             <option value="Medium">Medium</option>
             <option value="High">High</option>
             <option value="Urgent">Urgent</option>
           </Select>
-          <Select label="Target Audience" value={form.targetAudience} onChange={e => setForm({ ...form, targetAudience: e.target.value })}>
+          <Select label="Target Audience" value={form.targetAudience} error={errors.targetAudience} onChange={e => setForm({ ...form, targetAudience: e.target.value })}>
             <option value="All">All</option>
             <option value="Students">Students</option>
             <option value="Staff">Staff</option>
           </Select>
           <div className="sm:col-span-2">
-            <TextArea label="Content" rows={4} value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} />
+            <TextArea label="Content" rows={4} value={form.content} error={errors.content} onChange={e => setForm({ ...form, content: e.target.value })} />
           </div>
         </div>
       </Modal>

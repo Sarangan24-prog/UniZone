@@ -22,6 +22,7 @@ const assignmentRoutes = require("./routes/course/assignmentRoutes");
 const studyMaterialRoutes = require("./routes/course/studyMaterialRoutes");
 const announcementRoutes = require("./routes/course/announcementRoutes");
 const attendanceRoutes = require("./routes/course/attendanceRoutes");
+const userRoutes = require('./routes/userRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const userRoutes = require('./routes/userRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
@@ -46,6 +47,12 @@ app.use("/api/materials", studyMaterialRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use('/api/users', userRoutes);
+app.use("/api/timetable", timetableRoutes);
+app.use("/api/assignments", assignmentRoutes);
+app.use("/api/materials", studyMaterialRoutes);
+app.use("/api/announcements", announcementRoutes);
+app.use("/api/attendance", attendanceRoutes);
+
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/categories', categoryRoutes);
 // Health check

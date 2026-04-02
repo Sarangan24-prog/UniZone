@@ -37,7 +37,8 @@ if (loading) {
               <Route path="/register" element={<Register />} />
 
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/courses" element={<ProtectedRoute><Courses /></ProtectedRoute>} />
+              <Route path="/courses" element={<ProtectedRoute><CourseManagement /></ProtectedRoute>} />
+              
               <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
               <Route path="/sports" element={<ProtectedRoute><Sports /></ProtectedRoute>} />
               <Route path="/sports/equipment" element={<ProtectedRoute><Equipment /></ProtectedRoute>} />

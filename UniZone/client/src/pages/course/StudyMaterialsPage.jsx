@@ -20,7 +20,7 @@ export default function StudyMaterialsPage() {
   const [filterType, setFilterType] = useState("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [err, setErr] = useState("");
+  const [errors, setErrors] = useState({});
   const [form, setForm] = useState({
     course: "", title: "", description: "", type: "Notes", url: ""
   });
@@ -40,7 +40,7 @@ export default function StudyMaterialsPage() {
 
   const resetForm = () => setForm({ course: "", title: "", description: "", type: "Notes", url: "" });
 
-  const onCreate = () => { resetForm(); setEditing(null); setErr(""); setOpen(true); };
+  const onCreate = () => { resetForm(); setEditing(null); setErrors({}); setOpen(true); };
 
   const onEdit = (row) => {
     setEditing(row);
@@ -48,30 +48,31 @@ export default function StudyMaterialsPage() {
       course: row.course?._id || "", title: row.title || "",
       description: row.description || "", type: row.type || "Notes", url: row.url || ""
     });
-    setErr(""); setOpen(true);
+    setErrors({}); setOpen(true);
   };
 
   const save = async () => {
-    const errors = [];
-    if (!form.course) errors.push("Please select a course.");
-    if (!form.title || form.title.trim().length < 3 || form.title.length > 150) errors.push("Title must be 3-150 characters.");
-    if (form.url && !/^https?:\/\/.+/.test(form.url)) errors.push("Please provide a valid URL starting with http:// or https://");
-    if (form.description && form.description.length > 500) errors.push("Description cannot exceed 500 characters.");
+    const newErrors = {};
+    if (!form.course) newErrors.course = "Please select a course.";
+    if (!form.title || form.title.trim().length < 3 || form.title.length > 150) newErrors.title = "Title must be 3-150 characters.";
+    if (!form.type) newErrors.type = "Please select a material type.";
+    if (!form.url || form.url.trim().length === 0 || !/^https?:\/\/.+/.test(form.url)) newErrors.url = "Valid URL starting with http:// or https:// is required.";
+    if (form.description && form.description.length > 500) newErrors.description = "Description cannot exceed 500 characters.";
 
-    if (errors.length > 0) {
-      setErr(errors.join("\n"));
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     try {
-      setErr("");
+      setErrors({});
       if (editing) {
         await api.put(`/materials/${editing._id}`, form);
       } else {
         await api.post("/materials", form);
       }
       setOpen(false); load();
-    } catch (e) { setErr(e.response?.data?.message || "Save failed"); }
+    } catch (e) { setErrors({ global: e.response?.data?.message || "Save failed" }); }
   };
 
   const del = async (id) => { await api.delete(`/materials/${id}`); load(); };
@@ -85,24 +86,24 @@ export default function StudyMaterialsPage() {
   }, [items, filterCourse, filterType]);
 
   const typeStyles = {
-    Notes: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", icon: "📝" },
-    Slides: { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200", icon: "📊" },
-    Video: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", icon: "🎥" },
-    Link: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200", icon: "🔗" },
-    PDF: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", icon: "📄" },
+    Notes: { bg: "bg-blue-500/20", text: "text-blue-300", border: "border-blue-500/30", icon: "📝" },
+    Slides: { bg: "bg-purple-500/20", text: "text-purple-300", border: "border-purple-500/30", icon: "📊" },
+    Video: { bg: "bg-red-500/20", text: "text-red-300", border: "border-red-500/30", icon: "🎥" },
+    Link: { bg: "bg-green-500/20", text: "text-green-300", border: "border-green-500/30", icon: "🔗" },
+    PDF: { bg: "bg-amber-500/20", text: "text-amber-300", border: "border-amber-500/30", icon: "📄" },
   };
 
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Study Materials</h2>
-          <p className="text-sm text-gray-500 mt-1">Access course notes, slides, videos, and links</p>
+          <h2 className="text-2xl font-bold text-white">Study Materials</h2>
+          <p className="text-sm text-slate-400 mt-1">Access course notes, slides, videos, and links</p>
         </div>
         {isAdmin && <Button onClick={onCreate}>Add Material</Button>}
       </div>
 
-      <Card>
+      <Card glass>
         <div className="grid gap-3 sm:grid-cols-2">
           <Select label="Filter by Course" value={filterCourse} onChange={e => setFilterCourse(e.target.value)}>
             <option value="all">All Courses</option>
@@ -121,13 +122,13 @@ export default function StudyMaterialsPage() {
 
       <div className="mt-4">
         {loading ? <Loading /> : filtered.length === 0 ? (
-          <EmptyState title="No study materials" subtitle="Try changing filters or add new material." />
+          <EmptyState glass title="No study materials" subtitle="Try changing filters or add new material." />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((m) => {
               const style = typeStyles[m.type] || typeStyles.Notes;
               return (
-                <div key={m._id} className="rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
+                <div key={m._id} className="rounded-2xl border border-white/10 glass shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
                   <div className={`px-5 py-3 ${style.bg} border-b ${style.border}`}>
                     <div className="flex items-center justify-between">
                       <span className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide ${style.text}`}>
@@ -136,24 +137,24 @@ export default function StudyMaterialsPage() {
                     </div>
                   </div>
                   <div className="p-5">
-                    <h3 className="text-base font-bold text-gray-900 mb-1">{m.title}</h3>
-                    <p className="text-xs font-medium text-gray-500 mb-2">
+                    <h3 className="text-base font-bold text-white mb-1">{m.title}</h3>
+                    <p className="text-xs font-medium text-slate-400 mb-2">
                       {m.course ? `${m.course.code} - ${m.course.title}` : "—"}
                     </p>
                     {m.description && (
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{m.description}</p>
+                      <p className="text-sm text-slate-300 mb-3 line-clamp-2">{m.description}</p>
                     )}
                     {m.uploadedBy && (
-                      <p className="text-xs text-gray-400 mb-3">Uploaded by: {m.uploadedBy.name}</p>
+                      <p className="text-xs text-slate-500 mb-3">Uploaded by: {m.uploadedBy.name}</p>
                     )}
                     {m.url && (
                       <a href={m.url} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 mb-3">
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-400 hover:text-blue-300 mb-3">
                         🔗 Open Resource
                       </a>
                     )}
                     {isAdmin && (
-                      <div className="flex gap-2 pt-3 border-t border-gray-100">
+                      <div className="flex gap-2 pt-3 border-t border-white/10">
                         <Button variant="outline" className="flex-1" onClick={() => onEdit(m)}>Edit</Button>
                         <Button variant="danger" className="flex-1" onClick={() => del(m._id)}>Delete</Button>
                       </div>
@@ -168,11 +169,9 @@ export default function StudyMaterialsPage() {
 
       <Modal open={open} title={editing ? "Edit Material" : "Add Material"} onClose={() => setOpen(false)}
         footer={<div className="space-y-3">
-          {err && (
-            <div className="rounded-xl bg-red-50 border border-red-200 p-3">
-              <div className="text-sm font-medium text-red-700 space-y-1">
-                {err.split("\n").map((e, i) => <p key={i}>• {e}</p>)}
-              </div>
+          {errors.global && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+              <p className="text-sm font-medium text-red-400">• {errors.global}</p>
             </div>
           )}
           <div className="flex justify-end gap-3">
@@ -182,21 +181,21 @@ export default function StudyMaterialsPage() {
         </div>}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <Select label="Course" value={form.course} onChange={e => setForm({ ...form, course: e.target.value })}>
+          <Select label="Course" value={form.course} error={errors.course} onChange={e => setForm({ ...form, course: e.target.value })}>
             <option value="">Select Course</option>
             {courses.map(c => <option key={c._id} value={c._id}>{c.code} - {c.title}</option>)}
           </Select>
-          <Input label="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-          <Select label="Type" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
+          <Input label="Title" value={form.title} error={errors.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+          <Select label="Type" value={form.type} error={errors.type} onChange={e => setForm({ ...form, type: e.target.value })}>
             <option value="Notes">Notes</option>
             <option value="Slides">Slides</option>
             <option value="Video">Video</option>
             <option value="Link">Link</option>
             <option value="PDF">PDF</option>
           </Select>
-          <Input label="URL / Link" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://..." />
+          <Input label="URL / Link" value={form.url} error={errors.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://..." />
           <div className="sm:col-span-2">
-            <TextArea label="Description" rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+            <TextArea label="Description" rows={3} value={form.description} error={errors.description} onChange={e => setForm({ ...form, description: e.target.value })} />
           </div>
         </div>
       </Modal>

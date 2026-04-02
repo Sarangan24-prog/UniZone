@@ -37,6 +37,10 @@ const connectDB = async () => {
       console.warn('⚠️ Mongoose disconnected');
     });
 
+    const conn = await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 10000,
+    });
+
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {
