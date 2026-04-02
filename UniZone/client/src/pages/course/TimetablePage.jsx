@@ -20,7 +20,7 @@ export default function TimetablePage() {
   const [filterCourse, setFilterCourse] = useState("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [err, setErr] = useState("");
+  const [errors, setErrors] = useState({});
   const [form, setForm] = useState({
     course: "", day: "Monday", startTime: "09:00", endTime: "10:00",
     room: "", instructor: "", type: "Lecture"
@@ -44,7 +44,7 @@ export default function TimetablePage() {
     room: "", instructor: "", type: "Lecture"
   });
 
-  const onCreate = () => { resetForm(); setEditing(null); setErr(""); setOpen(true); };
+  const onCreate = () => { resetForm(); setEditing(null); setErrors({}); setOpen(true); };
 
   const onEdit = (row) => {
     setEditing(row);
@@ -53,32 +53,34 @@ export default function TimetablePage() {
       startTime: row.startTime || "09:00", endTime: row.endTime || "10:00",
       room: row.room || "", instructor: row.instructor || "", type: row.type || "Lecture"
     });
-    setErr(""); setOpen(true);
+    setErrors({}); setOpen(true);
   };
 
   const save = async () => {
-    const errors = [];
-    if (!form.course) errors.push("Please select a course.");
-    if (!form.startTime || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(form.startTime)) errors.push("Valid start time is required.");
-    if (!form.endTime || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(form.endTime)) errors.push("Valid end time is required.");
-    if (form.startTime && form.endTime && form.endTime <= form.startTime) errors.push("End time must be after start time.");
-    if (!form.room || form.room.trim().length < 2 || form.room.length > 50) errors.push("Room must be 2-50 characters.");
-    if (!form.instructor || form.instructor.trim().length < 3 || form.instructor.length > 100 || !/^[a-zA-Z\s.-]+$/.test(form.instructor)) errors.push("Valid instructor name is required (letters only).");
+    const newErrors = {};
+    if (!form.course) newErrors.course = "Please select a course.";
+    if (!form.day) newErrors.day = "Please select a day.";
+    if (!form.startTime || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(form.startTime)) newErrors.startTime = "Valid start time is required.";
+    if (!form.endTime || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(form.endTime)) newErrors.endTime = "Valid end time is required.";
+    if (form.startTime && form.endTime && form.endTime <= form.startTime) newErrors.endTime = "End time must be after start time.";
+    if (!form.room || form.room.trim().length < 2 || form.room.length > 50) newErrors.room = "Room must be 2-50 characters.";
+    if (!form.instructor || form.instructor.trim().length < 3 || form.instructor.length > 100 || !/^[a-zA-Z\s.-]+$/.test(form.instructor)) newErrors.instructor = "Valid instructor name is required (letters only).";
+    if (!form.type) newErrors.type = "Please select a class type.";
 
-    if (errors.length > 0) {
-      setErr(errors.join("\n"));
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     try {
-      setErr("");
+      setErrors({});
       if (editing) {
         await api.put(`/timetable/${editing._id}`, form);
       } else {
         await api.post("/timetable", form);
       }
       setOpen(false); load();
-    } catch (e) { setErr(e.response?.data?.message || "Save failed"); }
+    } catch (e) { setErrors({ global: e.response?.data?.message || "Save failed" }); }
   };
 
   const del = async (id) => { await api.delete(`/timetable/${id}`); load(); };
@@ -103,10 +105,10 @@ export default function TimetablePage() {
     { key: "instructor", header: "Instructor" },
     { key: "type", header: "Type", render: (r) => (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold ${
-        r.type === "Lecture" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-        r.type === "Lab" ? "bg-green-50 text-green-700 border border-green-200" :
-        r.type === "Tutorial" ? "bg-purple-50 text-purple-700 border border-purple-200" :
-        "bg-amber-50 text-amber-700 border border-amber-200"
+        r.type === "Lecture" ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" :
+        r.type === "Lab" ? "bg-green-500/20 text-green-300 border border-green-500/30" :
+        r.type === "Tutorial" ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" :
+        "bg-amber-500/20 text-amber-300 border border-amber-500/30"
       }`}>{r.type}</span>
     )},
     ...(isAdmin ? [{
@@ -123,13 +125,13 @@ export default function TimetablePage() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Timetable & Exam Schedule</h2>
-          <p className="text-sm text-gray-500 mt-1">View and manage class schedules</p>
+          <h2 className="text-2xl font-bold text-white">Timetable & Exam Schedule</h2>
+          <p className="text-sm text-slate-400 mt-1">View and manage class schedules</p>
         </div>
         {isAdmin && <Button onClick={onCreate}>Add Schedule</Button>}
       </div>
 
-      <Card>
+      <Card glass>
         <div className="grid gap-3 sm:grid-cols-2">
           <Select label="Filter by Day" value={filterDay} onChange={e => setFilterDay(e.target.value)}>
             <option value="all">All Days</option>
@@ -144,19 +146,17 @@ export default function TimetablePage() {
 
       <div className="mt-4">
         {loading ? <Loading /> : filtered.length === 0 ? (
-          <EmptyState title="No schedule entries" subtitle="Try changing filters or add a new entry." />
+          <EmptyState glass title="No schedule entries" subtitle="Try changing filters or add a new entry." />
         ) : (
-          <Table columns={columns} rows={filtered} />
+          <Table glass columns={columns} rows={filtered} />
         )}
       </div>
 
       <Modal open={open} title={editing ? "Edit Schedule" : "Add Schedule"} onClose={() => setOpen(false)}
         footer={<div className="space-y-3">
-          {err && (
-            <div className="rounded-xl bg-red-50 border border-red-200 p-3">
-              <div className="text-sm font-medium text-red-700 space-y-1">
-                {err.split("\n").map((e, i) => <p key={i}>• {e}</p>)}
-              </div>
+          {errors.global && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+              <p className="text-sm font-medium text-red-400">• {errors.global}</p>
             </div>
           )}
           <div className="flex justify-end gap-3">
@@ -166,18 +166,18 @@ export default function TimetablePage() {
         </div>}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <Select label="Course" value={form.course} onChange={e => setForm({ ...form, course: e.target.value })}>
+          <Select label="Course" value={form.course} error={errors.course} onChange={e => setForm({ ...form, course: e.target.value })}>
             <option value="">Select Course</option>
             {courses.map(c => <option key={c._id} value={c._id}>{c.code} - {c.title}</option>)}
           </Select>
-          <Select label="Day" value={form.day} onChange={e => setForm({ ...form, day: e.target.value })}>
+          <Select label="Day" value={form.day} error={errors.day} onChange={e => setForm({ ...form, day: e.target.value })}>
             {days.map(d => <option key={d} value={d}>{d}</option>)}
           </Select>
-          <Input label="Start Time" type="time" value={form.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })} />
-          <Input label="End Time" type="time" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })} />
-          <Input label="Room" value={form.room} onChange={e => setForm({ ...form, room: e.target.value })} placeholder="e.g. Room 301" />
-          <Input label="Instructor" value={form.instructor} onChange={e => setForm({ ...form, instructor: e.target.value })} placeholder="e.g. Dr. Smith" />
-          <Select label="Type" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
+          <Input label="Start Time" type="time" value={form.startTime} error={errors.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })} />
+          <Input label="End Time" type="time" value={form.endTime} error={errors.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })} />
+          <Input label="Room" value={form.room} error={errors.room} onChange={e => setForm({ ...form, room: e.target.value })} placeholder="e.g. Room 301" />
+          <Input label="Instructor" value={form.instructor} error={errors.instructor} onChange={e => setForm({ ...form, instructor: e.target.value })} placeholder="e.g. Dr. Smith" />
+          <Select label="Type" value={form.type} error={errors.type} onChange={e => setForm({ ...form, type: e.target.value })}>
             <option value="Lecture">Lecture</option>
             <option value="Lab">Lab</option>
             <option value="Tutorial">Tutorial</option>

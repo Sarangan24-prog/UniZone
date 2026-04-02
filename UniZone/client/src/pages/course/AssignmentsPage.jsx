@@ -20,7 +20,7 @@ export default function AssignmentsPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [err, setErr] = useState("");
+  const [errors, setErrors] = useState({});
   const [form, setForm] = useState({
     course: "", title: "", description: "", dueDate: "", totalMarks: 100, status: "Active"
   });
@@ -42,7 +42,7 @@ export default function AssignmentsPage() {
     course: "", title: "", description: "", dueDate: "", totalMarks: 100, status: "Active"
   });
 
-  const onCreate = () => { resetForm(); setEditing(null); setErr(""); setOpen(true); };
+  const onCreate = () => { resetForm(); setEditing(null); setErrors({}); setOpen(true); };
 
   const onEdit = (row) => {
     setEditing(row);
@@ -52,31 +52,32 @@ export default function AssignmentsPage() {
       dueDate: row.dueDate ? new Date(row.dueDate).toISOString().split("T")[0] : "",
       totalMarks: row.totalMarks || 100, status: row.status || "Active"
     });
-    setErr(""); setOpen(true);
+    setErrors({}); setOpen(true);
   };
 
   const save = async () => {
-    const errors = [];
-    if (!form.course) errors.push("Please select a course.");
-    if (!form.title || form.title.trim().length < 3 || form.title.length > 100) errors.push("Title must be 3-100 characters.");
-    if (!form.dueDate || isNaN(Date.parse(form.dueDate))) errors.push("Valid due date is required.");
-    if (!form.totalMarks || isNaN(form.totalMarks) || form.totalMarks < 1 || form.totalMarks > 1000) errors.push("Total marks must be between 1 and 1000.");
-    if (form.description && form.description.trim().length < 10) errors.push("Description must be at least 10 characters long if provided.");
+    const newErrors = {};
+    if (!form.course) newErrors.course = "Please select a course.";
+    if (!form.title || form.title.trim().length < 3 || form.title.length > 100) newErrors.title = "Title must be 3-100 characters.";
+    if (!form.dueDate || isNaN(Date.parse(form.dueDate))) newErrors.dueDate = "Valid due date is required.";
+    if (!form.totalMarks || isNaN(form.totalMarks) || form.totalMarks < 1 || form.totalMarks > 1000) newErrors.totalMarks = "Total marks must be between 1 and 1000.";
+    if (!form.status) newErrors.status = "Please select a status.";
+    if (form.description && form.description.trim().length < 10) newErrors.description = "Description must be at least 10 characters long if provided.";
 
-    if (errors.length > 0) {
-      setErr(errors.join("\n"));
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     try {
-      setErr("");
+      setErrors({});
       if (editing) {
         await api.put(`/assignments/${editing._id}`, form);
       } else {
         await api.post("/assignments", form);
       }
       setOpen(false); load();
-    } catch (e) { setErr(e.response?.data?.message || "Save failed"); }
+    } catch (e) { setErrors({ global: e.response?.data?.message || "Save failed" }); }
   };
 
   const del = async (id) => { await api.delete(`/assignments/${id}`); load(); };
@@ -96,13 +97,13 @@ export default function AssignmentsPage() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Assignments</h2>
-          <p className="text-sm text-gray-500 mt-1">Track and manage course assignments</p>
+          <h2 className="text-2xl font-bold text-white">Assignments</h2>
+          <p className="text-sm text-slate-400 mt-1">Track and manage course assignments</p>
         </div>
         {isAdmin && <Button onClick={onCreate}>New Assignment</Button>}
       </div>
 
-      <Card>
+      <Card glass>
         <div className="grid gap-3 sm:grid-cols-2">
           <Select label="Filter by Course" value={filterCourse} onChange={e => setFilterCourse(e.target.value)}>
             <option value="all">All Courses</option>
@@ -118,33 +119,33 @@ export default function AssignmentsPage() {
 
       <div className="mt-4">
         {loading ? <Loading /> : filtered.length === 0 ? (
-          <EmptyState title="No assignments found" subtitle="Try changing filters or create a new assignment." />
+          <EmptyState glass title="No assignments found" subtitle="Try changing filters or create a new assignment." />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((a) => (
-              <div key={a._id} className="rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
-                <div className={`px-5 py-3 ${a.status === "Closed" ? "bg-gray-100" : isOverdue(a.dueDate) ? "bg-gradient-to-r from-red-50 to-red-100/50" : "bg-gradient-to-r from-blue-50 to-blue-100/50"}`}>
+              <div key={a._id} className="rounded-2xl border border-white/10 glass shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
+                <div className={`px-5 py-3 ${a.status === "Closed" ? "bg-white/10" : isOverdue(a.dueDate) ? "bg-gradient-to-r from-red-50 to-red-100/50" : "bg-gradient-to-r from-blue-50 to-blue-100/50"}`}>
                   <div className="flex items-center justify-between">
-                    <span className={`text-xs font-bold uppercase tracking-wide ${a.status === "Closed" ? "text-gray-500" : isOverdue(a.dueDate) ? "text-red-600" : "text-blue-600"}`}>
+                    <span className={`text-xs font-bold uppercase tracking-wide ${a.status === "Closed" ? "text-slate-400" : isOverdue(a.dueDate) ? "text-red-400" : "text-blue-400"}`}>
                       {a.status === "Closed" ? "Closed" : isOverdue(a.dueDate) ? "Overdue" : "Active"}
                     </span>
-                    <span className="text-xs font-semibold text-gray-500">{a.totalMarks} marks</span>
+                    <span className="text-xs font-semibold text-slate-400">{a.totalMarks} marks</span>
                   </div>
                 </div>
                 <div className="p-5">
-                  <h3 className="text-base font-bold text-gray-900 mb-1">{a.title}</h3>
-                  <p className="text-xs font-medium text-gray-500 mb-3">
+                  <h3 className="text-base font-bold text-white mb-1">{a.title}</h3>
+                  <p className="text-xs font-medium text-slate-400 mb-3">
                     {a.course ? `${a.course.code} - ${a.course.title}` : "—"}
                   </p>
                   {a.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{a.description}</p>
+                    <p className="text-sm text-slate-300 mb-3 line-clamp-2">{a.description}</p>
                   )}
-                  <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-slate-400 mb-4">
                     <span>📅</span>
                     <span className="font-medium">Due: {formatDate(a.dueDate)}</span>
                   </div>
                   {isAdmin && (
-                    <div className="flex gap-2 pt-3 border-t border-gray-100">
+                    <div className="flex gap-2 pt-3 border-t border-white/10">
                       <Button variant="outline" className="flex-1" onClick={() => onEdit(a)}>Edit</Button>
                       <Button variant="danger" className="flex-1" onClick={() => del(a._id)}>Delete</Button>
                     </div>
@@ -158,11 +159,9 @@ export default function AssignmentsPage() {
 
       <Modal open={open} title={editing ? "Edit Assignment" : "New Assignment"} onClose={() => setOpen(false)}
         footer={<div className="space-y-3">
-          {err && (
-            <div className="rounded-xl bg-red-50 border border-red-200 p-3">
-              <div className="text-sm font-medium text-red-700 space-y-1">
-                {err.split("\n").map((e, i) => <p key={i}>• {e}</p>)}
-              </div>
+          {errors.global && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+              <p className="text-sm font-medium text-red-400">• {errors.global}</p>
             </div>
           )}
           <div className="flex justify-end gap-3">
@@ -172,19 +171,19 @@ export default function AssignmentsPage() {
         </div>}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <Select label="Course" value={form.course} onChange={e => setForm({ ...form, course: e.target.value })}>
+          <Select label="Course" value={form.course} error={errors.course} onChange={e => setForm({ ...form, course: e.target.value })}>
             <option value="">Select Course</option>
             {courses.map(c => <option key={c._id} value={c._id}>{c.code} - {c.title}</option>)}
           </Select>
-          <Input label="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-          <Input label="Due Date" type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} />
-          <Input label="Total Marks" type="number" value={form.totalMarks} onChange={e => setForm({ ...form, totalMarks: +e.target.value })} />
-          <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+          <Input label="Title" value={form.title} error={errors.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+          <Input label="Due Date" type="date" value={form.dueDate} error={errors.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} />
+          <Input label="Total Marks" type="number" value={form.totalMarks} error={errors.totalMarks} onChange={e => setForm({ ...form, totalMarks: +e.target.value })} />
+          <Select label="Status" value={form.status} error={errors.status} onChange={e => setForm({ ...form, status: e.target.value })}>
             <option value="Active">Active</option>
             <option value="Closed">Closed</option>
           </Select>
           <div className="sm:col-span-2">
-            <TextArea label="Description" rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+            <TextArea label="Description" rows={3} value={form.description} error={errors.description} onChange={e => setForm({ ...form, description: e.target.value })} />
           </div>
         </div>
       </Modal>
