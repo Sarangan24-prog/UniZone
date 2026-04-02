@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PageShell from "../../components/PageShell";
 import CourseSidebar from "../../components/CourseSidebar";
-import Courses from "../Courses";
+import Courses from "./Courses";
 import TimetablePage from "./TimetablePage";
 import AssignmentsPage from "./AssignmentsPage";
 import StudyMaterialsPage from "./StudyMaterialsPage";

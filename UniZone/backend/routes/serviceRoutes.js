@@ -3,6 +3,29 @@ const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const Service = require('../models/Service');
 const serviceController = require('../controllers/serviceController');
+const multer = require('multer');
+const path = require('path');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/id-cards');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `id-card-${req.user._id}-${uniqueSuffix}${path.extname(file.originalname)}`);
+  }
+});
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|pdf/;
+    const ext = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mime = allowedTypes.test(file.mimetype);
+    if (ext && mime) return cb(null, true);
+    cb(new Error('Only .jpeg, .jpg, .png and .pdf formats allowed!'));
+  }
+});
 
 // --- Generic Service Requests (existing) ---
 // Get all services (admin/staff)
@@ -60,7 +83,7 @@ router.get('/hostel', authenticate, authorize('admin', 'staff'), serviceControll
 router.put('/hostel/:id', authenticate, authorize('admin', 'staff'), serviceController.updateHostelRequestStatus);
 
 // --- ID Card Requests ---
-router.post('/idcard', authenticate, authorize('student'), serviceController.createIdCardRequest);
+router.post('/idcard', authenticate, authorize('student'), upload.single('attachment'), serviceController.createIdCardRequest);
 router.get('/idcard/mine', authenticate, authorize('student'), serviceController.getMyIdCardRequests);
 router.get('/idcard', authenticate, authorize('admin', 'staff'), serviceController.getAllIdCardRequests);
 router.put('/idcard/:id', authenticate, authorize('admin', 'staff'), serviceController.updateIdCardRequestStatus);

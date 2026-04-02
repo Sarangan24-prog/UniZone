@@ -30,7 +30,11 @@ exports.updateHostelRequestStatus = asyncHandler(async (req, res) => {
 
 // --- ID Card Requests ---
 exports.createIdCardRequest = asyncHandler(async (req, res) => {
-  const request = await IdCardRequest.create({ ...req.body, userId: req.user._id });
+  const request = await IdCardRequest.create({ 
+    ...req.body, 
+    userId: req.user._id,
+    attachment: req.file ? `/uploads/id-cards/${req.file.filename}` : undefined
+  });
   res.status(201).json(request);
 });
 exports.getMyIdCardRequests = asyncHandler(async (req, res) => {

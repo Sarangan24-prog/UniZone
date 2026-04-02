@@ -27,6 +27,9 @@ export default function Login() {
   return (
     <PageShell title="Welcome Back" subtitle="Sign in to your digital campus workspace">
       <div className="mx-auto max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <div className="flex justify-center mb-8 animate-in zoom-in-90 duration-1000">
+          <img src="/logo.png" alt="UniZone Logo" className="w-24 h-24 object-contain filter drop-shadow-2xl" />
+        </div>
         <Card glass className="border-4 border-white/20 shadow-2xl">
           <form className="space-y-6" onSubmit={onSubmit}>
             <div className="space-y-4">
@@ -35,7 +38,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@university.edu"
-                className="bg-white/50 backdrop-blur-sm border-2 border-blue-100 focus:border-blue-500 rounded-2xl p-4 font-bold"
+                className="bg-white/5 backdrop-blur-md border-2 border-white/10 focus:border-blue-500 rounded-2xl p-4 font-bold text-white placeholder:text-slate-500"
               />
               <Input
                 label="Password"
@@ -43,7 +46,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••"
-                className="bg-white/50 backdrop-blur-sm border-2 border-blue-100 focus:border-blue-500 rounded-2xl p-4 font-bold"
+                className="bg-white/5 backdrop-blur-md border-2 border-white/10 focus:border-blue-500 rounded-2xl p-4 font-bold text-white placeholder:text-slate-500"
               />
             </div>
 

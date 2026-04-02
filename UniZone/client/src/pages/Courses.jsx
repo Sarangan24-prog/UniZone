@@ -34,9 +34,15 @@ export default function Courses({ isEmbedded = false }) {
 
   const load = async () => {
     setLoading(true);
-    const res = await api.get("/courses");
-    setItems(res.data);
-    setLoading(false);
+    try {
+      const res = await api.get("/courses");
+      setItems(res.data || []);
+    } catch (e) {
+      console.error("Failed to load courses:", e);
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);

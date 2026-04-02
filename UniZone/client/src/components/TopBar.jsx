@@ -30,13 +30,13 @@ export default function TopBar() {
       <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-2xl border-b border-white/5 shadow-2xl"></div>
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-20 items-center justify-between">
+        <div className="flex h-24 items-center justify-between">
           <div className="flex items-center gap-12">
-            <Link to="/" className="flex items-center gap-3 group">
-              <div className="w-11 h-11 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-2xl transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 border-2 border-white/20">
-                <span className="text-white text-xl font-black drop-shadow-lg">U</span>
+            <Link to="/" className="flex items-center gap-4 group">
+              <div className="w-16 h-16 relative flex items-center justify-center transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                <img src="/logo.png" alt="UniZone Logo" className="w-full h-full object-contain drop-shadow-2xl" />
               </div>
-              <span className="text-2xl font-black text-white tracking-tighter group-hover:text-blue-400 transition-colors">
+              <span className="text-3xl font-black text-white tracking-tighter group-hover:text-blue-400 transition-colors">
                 UniZone
               </span>
             </Link>
@@ -75,8 +75,16 @@ export default function TopBar() {
                         {user?.role}
                       </span>
                     </div>
-                    <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 flex items-center justify-center shadow-2xl group-hover/avatar:scale-110 transition-transform duration-300 border-2 border-white/10">
-                      <span className="text-white font-black text-base drop-shadow-md">{user?.name?.charAt(0)?.toUpperCase()}</span>
+                    <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 flex items-center justify-center shadow-2xl group-hover/avatar:scale-110 transition-transform duration-300 border-2 border-white/10 overflow-hidden">
+                      {user?.profilePic ? (
+                        <img 
+                          src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000'}${user.profilePic}`} 
+                          alt={user?.name} 
+                          className="w-full h-full object-cover" 
+                        />
+                      ) : (
+                        <span className="text-white font-black text-base drop-shadow-md">{user?.name?.charAt(0)?.toUpperCase()}</span>
+                      )}
                     </div>
                   </Link>
                   <Button

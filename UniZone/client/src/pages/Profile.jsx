@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import PageShell from "../components/PageShell";
 import Card from "../components/Card";
 import Button from "../components/Button";
@@ -6,16 +6,26 @@ import Modal from "../components/Modal";
 import Input from "../components/Input";
 import Select from "../components/Select";
 import { useAuth } from "../auth/AuthContext";
+import api from "../api/client";
 
 export default function Profile() {
-    const { user, logout } = useAuth();
+    const { user, logout, updateUser } = useAuth();
+    const fileInputRef = useRef(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [activeModal, setActiveModal] = useState(null); // 'security', 'preferences', 'privacy'
     const [formErrors, setFormErrors] = useState({});
     const [profileForm, setProfileForm] = useState({
         name: user?.name || "",
         email: user?.email || "",
         major: "Interactive Design",
         year: "Year 3"
+    });
+
+    const [prefs, setPrefs] = useState({
+        notifications: true,
+        securityAlerts: true,
+        weeklyReports: false
     });
 
     const getRoleColor = (role) => {
@@ -54,6 +64,59 @@ export default function Profile() {
         setFormErrors({});
     };
 
+    const handleDownloadData = () => {
+        const data = {
+            user: {
+                name: user?.name,
+                email: user?.email,
+                role: user?.role,
+                ...profileForm
+            },
+            preferences: prefs,
+            exportedAt: new Date().toISOString()
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `unizone-profile-${user?.name?.toLowerCase().replace(/\s+/g, '-')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    const handleAvatarClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('avatar', file);
+
+        try {
+            setIsUploading(true);
+            const res = await api.post('users/profile-pic', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            updateUser({ profilePic: res.data.profilePic });
+        } catch (error) {
+            console.error("Avatar upload failed:", error);
+            alert(error.response?.data?.message || "Failed to upload profile picture");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const getAvatarUrl = () => {
+        if (!user?.profilePic) return null;
+        const baseUrl = api.defaults.baseURL.replace('/api', '');
+        return `${baseUrl}${user.profilePic}`;
+    };
+
     return (
         <PageShell title="User Profile" subtitle="Refine your professional persona and account settings">
             <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
@@ -62,11 +125,34 @@ export default function Profile() {
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/5 to-transparent pointer-events-none"></div>
                     <div className="relative flex flex-col md:flex-row items-center gap-10 p-10">
                         <div className="relative">
-                            <div className="w-40 h-40 md:w-52 md:h-52 rounded-[60px] bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 flex items-center justify-center shadow-2xl border-2 border-white/20 group-hover:scale-[1.02] transition-all duration-700 overflow-hidden">
-                                <span className="text-white font-black text-7xl drop-shadow-[0_4px_16px_rgba(0,0,0,0.5)]">{user?.name?.charAt(0)?.toUpperCase()}</span>
-                                <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent"></div>
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                className="hidden" 
+                                accept="image/*" 
+                                onChange={handleFileChange} 
+                            />
+                            <div 
+                                onClick={handleAvatarClick}
+                                className={`w-40 h-40 md:w-52 md:h-52 rounded-[60px] bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 flex items-center justify-center shadow-2xl border-2 border-white/20 group-hover:scale-[1.02] transition-all duration-700 overflow-hidden cursor-pointer relative group/avatar ${isUploading ? 'opacity-70' : ''}`}
+                            >
+                                {user?.profilePic ? (
+                                    <img 
+                                        src={getAvatarUrl()} 
+                                        alt={user?.name} 
+                                        className="w-full h-full object-cover animate-in fade-in duration-700" 
+                                    />
+                                ) : (
+                                    <span className="text-white font-black text-7xl drop-shadow-[0_4px_16px_rgba(0,0,0,0.5)]">{user?.name?.charAt(0)?.toUpperCase()}</span>
+                                )}
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
+                                    <span className="text-white font-black text-xs uppercase tracking-widest bg-white/20 px-4 py-2 rounded-xl backdrop-blur-md border border-white/20">
+                                        {isUploading ? 'Uploading...' : 'Change Photo'}
+                                    </span>
+                                </div>
+                                <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent pointer-events-none"></div>
                             </div>
-                            <div className="absolute -bottom-3 -right-3 bg-emerald-500 w-12 h-12 rounded-3xl flex items-center justify-center border-4 border-slate-900 shadow-2xl animate-bounce-slow">
+                            <div className="absolute -bottom-3 -right-3 bg-emerald-500 w-12 h-12 rounded-3xl flex items-center justify-center border-4 border-slate-900 shadow-2xl animate-bounce-slow z-10">
                                 <div className="w-4 h-4 bg-white rounded-full"></div>
                             </div>
                         </div>
@@ -108,13 +194,13 @@ export default function Profile() {
                 <div className="grid gap-8 md:grid-cols-12">
                     {/* Left: Account Details */}
                     <div className="md:col-span-7 space-y-8">
-                        <Card className="bg-gradient-to-b from-slate-200 to-slate-50 border border-white/50 shadow-2xl rounded-[32px] p-8 h-full">
+                        <Card glass className="border border-white/10 shadow-2xl rounded-[32px] p-8 h-full">
                             <div className="flex items-center justify-between mb-10">
-                                <h3 className="text-2xl font-black text-slate-900 flex items-center gap-4">
-                                    <span className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-800 flex items-center justify-center text-xl shadow-inner border border-white">👤</span>
+                                <h3 className="text-2xl font-black text-white flex items-center gap-4">
+                                    <span className="w-12 h-12 rounded-2xl bg-white/5 text-blue-400 flex items-center justify-center text-xl shadow-inner border border-white/5">👤</span>
                                     Core Profile
                                 </h3>
-                                <div className="h-[2px] flex-1 mx-6 bg-gradient-to-r from-slate-300 to-transparent"></div>
+                                <div className="h-[2px] flex-1 mx-6 bg-gradient-to-r from-blue-500/20 to-transparent"></div>
                             </div>
 
                             <div className="grid gap-10 sm:grid-cols-2">
@@ -125,9 +211,9 @@ export default function Profile() {
                                     { label: 'Academic Year', value: profileForm.year, desc: 'Enrollment progress' }
                                 ].map(item => (
                                     <div key={item.label} className="group/item flex flex-col gap-1">
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] group-hover/item:text-slate-700 transition-colors">{item.label}</p>
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] group-hover/item:text-blue-400 transition-colors">{item.label}</p>
                                         <div className="py-2 transition-all">
-                                            <p className="text-lg font-bold text-slate-800 tracking-tight">{item.value}</p>
+                                            <p className="text-lg font-bold text-white tracking-tight">{item.value}</p>
                                             <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">{item.desc}</p>
                                         </div>
                                     </div>
@@ -138,24 +224,28 @@ export default function Profile() {
 
                     {/* Right: Security & Actions */}
                     <div className="md:col-span-5 space-y-8">
-                        <Card className="bg-gradient-to-b from-slate-200 to-slate-50 border border-white/50 shadow-2xl rounded-[32px] p-8">
-                            <h3 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-4">
-                                <span className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-800 flex items-center justify-center text-xl shadow-inner border border-white">⚡</span>
+                        <Card glass className="border border-white/10 shadow-2xl rounded-[32px] p-8">
+                            <h3 className="text-2xl font-black text-white mb-8 flex items-center gap-4">
+                                <span className="w-12 h-12 rounded-2xl bg-white/5 text-blue-400 flex items-center justify-center text-xl shadow-inner border border-white/5">⚡</span>
                                 Ecosystem
                             </h3>
                             <div className="grid gap-4">
                                 {[
-                                    { name: 'Update Security', icon: '🔑', color: 'bg-white text-blue-500' },
-                                    { name: 'Preferences', icon: '⚙️', color: 'bg-white text-slate-500' },
-                                    { name: 'Download Data', icon: '📄', color: 'bg-white text-emerald-500' },
-                                    { name: 'Privacy Center', icon: '🛡️', color: 'bg-white text-purple-500' }
+                                    { name: 'Update Security', icon: '🔑', color: 'bg-blue-500/10 text-blue-400', action: () => setActiveModal('security') },
+                                    { name: 'Preferences', icon: '⚙️', color: 'bg-slate-500/10 text-slate-400', action: () => setActiveModal('preferences') },
+                                    { name: 'Download Data', icon: '📄', color: 'bg-emerald-500/10 text-emerald-400', action: handleDownloadData },
+                                    { name: 'Privacy Center', icon: '🛡️', color: 'bg-purple-500/10 text-purple-400', action: () => setActiveModal('privacy') }
                                 ].map(action => (
-                                    <button key={action.name} className="flex items-center justify-between w-full p-4 rounded-2xl bg-white/60 border border-white hover:bg-white transition-all group/action shadow-sm">
+                                    <button 
+                                        key={action.name} 
+                                        onClick={action.action}
+                                        className="flex items-center justify-between w-full p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all group/action shadow-sm"
+                                    >
                                         <div className="flex items-center gap-4">
                                             <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${action.color} group-hover/action:scale-110 transition-transform shadow-sm`}>{action.icon}</span>
-                                            <span className="text-sm font-black text-slate-400 group-hover/action:text-slate-800 uppercase tracking-widest">{action.name}</span>
+                                            <span className="text-sm font-black text-slate-400 group-hover/action:text-white uppercase tracking-widest">{action.name}</span>
                                         </div>
-                                        <span className="text-slate-400 group-hover/action:text-slate-800 group-hover/action:translate-x-1 transition-all">→</span>
+                                        <span className="text-slate-500 group-hover/action:text-white group-hover/action:translate-x-1 transition-all">→</span>
                                     </button>
                                 ))}
                             </div>
@@ -253,6 +343,91 @@ export default function Profile() {
                     </div>
                     <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-[10px] font-black text-blue-400 uppercase tracking-widest leading-relaxed">
                         Note: Official academic record changes may require verification from the student affairs portal.
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Security Modal */}
+            <Modal
+                open={activeModal === 'security'}
+                title="Account Security"
+                onClose={() => setActiveModal(null)}
+                footer={(
+                    <div className="flex justify-end pt-2">
+                        <Button onClick={() => setActiveModal(null)} className="!px-8 rounded-2xl bg-blue-600 font-black uppercase tracking-widest text-[10px]">Update Credentials</Button>
+                    </div>
+                )}
+            >
+                <div className="space-y-6">
+                    <Input type="password" label="Current Pin/Password" placeholder="••••••••" />
+                    <div className="grid gap-5 sm:grid-cols-2">
+                        <Input type="password" label="New Password" placeholder="••••••••" />
+                        <Input type="password" label="Confirm New Password" placeholder="••••••••" />
+                    </div>
+                    <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[10px] font-black text-amber-500 uppercase tracking-widest">
+                        ⚠️ Changing security credentials will end all other active sessions for this account.
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Preferences Modal */}
+            <Modal
+                open={activeModal === 'preferences'}
+                title="User Preferences"
+                onClose={() => setActiveModal(null)}
+                footer={(
+                    <div className="flex justify-end pt-2">
+                        <Button onClick={() => setActiveModal(null)} className="!px-8 rounded-2xl bg-emerald-600 font-black uppercase tracking-widest text-[10px]">Save Preferences</Button>
+                    </div>
+                )}
+            >
+                <div className="space-y-4">
+                    {[
+                        { id: 'notifications', title: 'Social Notifications', desc: 'Receive alerts for sport team updates and news.' },
+                        { id: 'securityAlerts', title: 'Security Alerts', desc: 'Notify me when unusual login attempts are detected.' },
+                        { id: 'weeklyReports', title: 'Weekly Reports', desc: 'Send a summary of my academic and sport progress.' }
+                    ].map(pref => (
+                        <div key={pref.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
+                            <div>
+                                <h4 className="text-sm font-black text-white uppercase tracking-widest">{pref.title}</h4>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">{pref.desc}</p>
+                            </div>
+                            <button 
+                                onClick={() => setPrefs(p => ({...p, [pref.id]: !p[pref.id]}))}
+                                className={`w-12 h-6 rounded-full transition-all duration-500 relative ${prefs[pref.id] ? 'bg-blue-600' : 'bg-slate-700'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-500 ${prefs[pref.id] ? 'left-7' : 'left-1'}`}></div>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </Modal>
+
+            {/* Privacy Center Modal */}
+            <Modal
+                open={activeModal === 'privacy'}
+                title="Privacy & Data Control"
+                onClose={() => setActiveModal(null)}
+            >
+                <div className="space-y-6">
+                    <div className="aspect-video rounded-3xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center border border-white/10">
+                        <span className="text-6xl">🛡️</span>
+                    </div>
+                    <div className="space-y-4">
+                        <h4 className="text-lg font-black text-white uppercase tracking-tight">Your data is yours.</h4>
+                        <p className="text-sm font-bold text-slate-400 leading-relaxed uppercase tracking-[0.05em]">
+                            UniZone employs industry-standard encryption for all student records. We never share your personal data with third-party organizations without your explicit consent.
+                        </p>
+                        <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                                <span className="text-[10px] font-black text-white uppercase tracking-widest">End-to-End Encryption Enabled</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                                <span className="text-[10px] font-black text-white uppercase tracking-widest">GDPR & CCPA Compliant storage</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </Modal>

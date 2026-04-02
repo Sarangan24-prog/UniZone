@@ -19,13 +19,13 @@ export default function CourseSidebar({ activeTab, onTabChange }) {
             <li key={tab.id}>
               <button
                 onClick={() => onTabChange(tab.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-300 ${
+                className={`w-full text-left flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 font-bold text-sm ${
                   activeTab === tab.id
-                    ? "bg-blue-600/20 text-blue-400 shadow-lg border border-blue-500/20"
-                    : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                    ? 'bg-[#1c2331] text-white shadow-lg ring-1 ring-white/10 scale-[1.02]'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                <span className="text-lg">{tab.icon}</span>
+                <span className="text-[20px] filter drop-shadow-md">{tab.icon}</span>
                 <span>{tab.label}</span>
               </button>
             </li>

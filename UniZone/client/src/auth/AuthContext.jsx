@@ -12,10 +12,15 @@ export function AuthProvider({ children }) {
   const isAuthed = !!localStorage.getItem("token");
 
   const login = async (email, password) => {
-    const res = await api.post("/auth/login", { email, password });
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("user", JSON.stringify(res.data.user));
-    setUser(res.data.user);
+    try {
+      const res = await api.post("/auth/login", { email, password });
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+      setUser(res.data.user);
+    } catch (error) {
+      console.error("AuthContext login error:", error);
+      throw error;
+    }
   };
 
   const register = async ({ name, email, password, role = "student", roleCreateKey = "" }) => {
@@ -36,7 +41,13 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const value = useMemo(() => ({ user, isAuthed, login, register, logout }), [user, isAuthed]);
+  const updateUser = (data) => {
+    const updated = { ...user, ...data };
+    localStorage.setItem("user", JSON.stringify(updated));
+    setUser(updated);
+  };
+
+  const value = useMemo(() => ({ user, isAuthed, login, register, logout, updateUser }), [user, isAuthed]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

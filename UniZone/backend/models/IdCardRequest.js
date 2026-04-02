@@ -9,13 +9,17 @@ const idCardRequestSchema = new mongoose.Schema({
   reason: {
     type: String,
     required: [true, 'Reason for application is required'],
-    enum: ['New', 'Lost', 'Damaged']
+    enum: ['New', 'Lost']
   },
-  bloodGroup: {
-    type: String,
-    required: [true, 'Blood group is required'],
-    enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
-  },
+  fullName: { type: String, required: true },
+  studentId: { type: String }, // Optional for 'New', required for 'Lost' (validated on frontend)
+  department: { type: String },
+  batch: { type: String },
+  phone: { type: String },
+  nicNumber: { type: String },
+  lossDate: { type: Date },
+  lossLocation: { type: String },
+  attachment: { type: String }, // Path to Pic or PDF
   status: {
     type: String,
     enum: ['open', 'in_progress', 'completed', 'rejected'],

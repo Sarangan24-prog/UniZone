@@ -68,7 +68,7 @@ export default function AdminRequests() {
 
   return (
     <PageShell title="All Service Requests" subtitle="Staff/Admin: search, filter, and update status">
-      <Card>
+      <Card glass>
         <div className="grid gap-3 sm:grid-cols-3">
           <Input label="Search" value={q} onChange={(e)=>setQ(e.target.value)} placeholder="IT, finance, description..." />
           <Select label="Status" value={status} onChange={(e)=>setStatus(e.target.value)}>
