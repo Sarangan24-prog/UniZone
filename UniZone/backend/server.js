@@ -22,7 +22,7 @@ const assignmentRoutes = require("./routes/assignmentRoutes");
 const studyMaterialRoutes = require("./routes/studyMaterialRoutes");
 const announcementRoutes = require("./routes/announcementRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
-
+const categoryRoutes = require('./routes/categoryRoutes');
 const userRoutes = require('./routes/userRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
 // Connect to database
@@ -49,7 +49,7 @@ app.use("/api/announcements", announcementRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/equipment', equipmentRoutes);
-
+app.use('/api/categories', categoryRoutes);
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({
