@@ -23,6 +23,11 @@ const studyMaterialRoutes = require("./routes/studyMaterialRoutes");
 const announcementRoutes = require("./routes/announcementRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
 
+const userRoutes = require('./routes/userRoutes');
+const equipmentRoutes = require('./routes/equipmentRoutes');
+// Connect to database
+connectDB();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -42,6 +47,8 @@ app.use("/api/assignments", assignmentRoutes);
 app.use("/api/materials", studyMaterialRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/attendance", attendanceRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/equipment', equipmentRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
