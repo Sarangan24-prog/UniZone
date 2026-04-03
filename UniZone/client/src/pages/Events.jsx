@@ -8,6 +8,8 @@ import Table from "../components/Table";
 import EmptyState from "../components/EmptyState";
 import Loading from "../components/Loading";
 import TextArea from "../components/TextArea";
+import PageShell from "../components/PageShell";
+import Card from "../components/Card";
 import { useAuth } from "../auth/AuthContext";
 
 const NAV_ITEMS_STUDENT = [
@@ -33,6 +35,7 @@ export default function Events() {
   const [q, setQ] = useState("");
   const [month, setMonth] = useState("all");
   const [sort, setSort] = useState("date_asc");
+  const [tab, setTab] = useState("all");
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -577,6 +580,7 @@ export default function Events() {
         </div>
       </Modal>
 
+    </PageShell>
     </div>
   );
 }
