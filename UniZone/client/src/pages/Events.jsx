@@ -8,8 +8,6 @@ import Table from "../components/Table";
 import EmptyState from "../components/EmptyState";
 import Loading from "../components/Loading";
 import TextArea from "../components/TextArea";
-import PageShell from "../components/PageShell";
-import Card from "../components/Card";
 import { useAuth } from "../auth/AuthContext";
 
 const NAV_ITEMS_STUDENT = [
@@ -580,7 +578,6 @@ export default function Events() {
         </div>
       </Modal>
 
-    </PageShell>
     </div>
   );
 }
