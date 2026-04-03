@@ -5,6 +5,7 @@ import Select from "../../components/Select";
 import Button from "../../components/Button";
 import Modal from "../../components/Modal";
 import TextArea from "../../components/TextArea";
+import FileDropZone from "../../components/FileDropZone";
 
 export default function AssignmentsPage() {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -26,6 +27,7 @@ export default function AssignmentsPage() {
     totalMarks: 100,
     status: "Active",
   });
+  const [attachedFiles, setAttachedFiles] = useState([]);
 
   const load = async () => {
     try {
@@ -49,7 +51,7 @@ export default function AssignmentsPage() {
     load();
   }, []);
 
-  const resetForm = () =>
+  const resetForm = () => {
     setForm({
       course: "",
       title: "",
@@ -58,6 +60,8 @@ export default function AssignmentsPage() {
       totalMarks: 100,
       status: "Active",
     });
+    setAttachedFiles([]);
+  };
 
   const onCreate = () => {
     resetForm();
@@ -78,6 +82,7 @@ export default function AssignmentsPage() {
       totalMarks: row.totalMarks || 100,
       status: row.status || "Active",
     });
+    setAttachedFiles([]);
     setErrors({});
     setOpen(true);
   };
@@ -126,10 +131,21 @@ export default function AssignmentsPage() {
 
     try {
       setErrors({});
+      // Encode files to base64
+      const encodeFile = (file) =>
+        new Promise((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = () =>
+            res({ name: file.name, size: file.size, type: file.type, data: reader.result });
+          reader.onerror = rej;
+          reader.readAsDataURL(file);
+        });
+      const encodedFiles = await Promise.all(attachedFiles.map(encodeFile));
+      const payload = { ...form, attachments: encodedFiles };
       if (editing) {
-        await api.put(`/assignments/${editing._id}`, form);
+        await api.put(`/assignments/${editing._id}`, payload);
       } else {
-        await api.post("/assignments", form);
+        await api.post("/assignments", payload);
       }
       setOpen(false);
       load();
@@ -406,6 +422,17 @@ export default function AssignmentsPage() {
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
               }
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <FileDropZone
+              label="Attachments (optional)"
+              files={attachedFiles}
+              onChange={setAttachedFiles}
+              accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,image/*"
+              multiple
+              maxSizeMB={10}
             />
           </div>
         </div>

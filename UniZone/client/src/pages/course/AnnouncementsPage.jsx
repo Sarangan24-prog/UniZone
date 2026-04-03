@@ -5,6 +5,7 @@ import Input from "../../components/Input";
 import Button from "../../components/Button";
 import Modal from "../../components/Modal";
 import TextArea from "../../components/TextArea";
+import FileDropZone from "../../components/FileDropZone";
 
 export default function AnnouncementsPage() {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -22,6 +23,7 @@ export default function AnnouncementsPage() {
     priority: "Medium",
     targetAudience: "All",
   });
+  const [attachedFiles, setAttachedFiles] = useState([]);
 
   const load = async () => {
     try {
@@ -40,13 +42,15 @@ export default function AnnouncementsPage() {
     load();
   }, []);
 
-  const resetForm = () =>
+  const resetForm = () => {
     setForm({
       title: "",
       content: "",
       priority: "Medium",
       targetAudience: "All",
     });
+    setAttachedFiles([]);
+  };
 
   const onCreate = () => {
     resetForm();
@@ -63,6 +67,7 @@ export default function AnnouncementsPage() {
       priority: row.priority || "Medium",
       targetAudience: row.targetAudience || "All",
     });
+    setAttachedFiles([]);
     setErrors({});
     setOpen(true);
   };
@@ -97,10 +102,20 @@ export default function AnnouncementsPage() {
 
     try {
       setErrors({});
+      const encodeFile = (file) =>
+        new Promise((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = () =>
+            res({ name: file.name, size: file.size, type: file.type, data: reader.result });
+          reader.onerror = rej;
+          reader.readAsDataURL(file);
+        });
+      const encodedFiles = await Promise.all(attachedFiles.map(encodeFile));
+      const payload = { ...form, attachments: encodedFiles };
       if (editing) {
-        await api.put(`/announcements/${editing._id}`, form);
+        await api.put(`/announcements/${editing._id}`, payload);
       } else {
-        await api.post("/announcements", form);
+        await api.post("/announcements", payload);
       }
       setOpen(false);
       load();
@@ -349,6 +364,17 @@ export default function AnnouncementsPage() {
               value={form.content}
               error={errors.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <FileDropZone
+              label="Attachments (optional)"
+              files={attachedFiles}
+              onChange={setAttachedFiles}
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.ppt,.pptx"
+              multiple
+              maxSizeMB={10}
             />
           </div>
         </div>
