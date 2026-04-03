@@ -807,6 +807,7 @@ export default function Events() {
           )}
         </div>
       </Modal>
+
     </div>
   );
 }

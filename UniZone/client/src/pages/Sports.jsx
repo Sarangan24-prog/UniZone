@@ -196,10 +196,20 @@ export default function Sports() {
 
   const onEdit = (row) => {
     setEditing(row);
+    // Auto-derive teamSizeCategory from maxPlayers if not already set
+    let category = row.teamSizeCategory || "";
+    if (!category) {
+      const mp = row.maxPlayers || 30;
+      if (mp <= 1) category = "Individual";
+      else if (mp <= 2) category = "Duo";
+      else if (mp <= 10) category = "Small Team";
+      else if (mp <= 20) category = "Medium Team";
+      else category = "Large Team";
+    }
     setForm({
       name: row.name || "",
       maxPlayers: row.maxPlayers || 30,
-      teamSizeCategory: row.teamSizeCategory || "",
+      teamSizeCategory: category,
       status: row.status || "Active",
       description: row.description || ""
     });
@@ -687,7 +697,7 @@ export default function Sports() {
             {err && <div className="rounded-xl bg-red-50 border border-red-200 p-3"><p className="text-sm font-medium text-red-700">{err}</p></div>}
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={save} disabled={!isFormValid || submitting}>
+              <Button onClick={save} disabled={submitting}>
                 {submitting ? "Saving..." : editing ? "Update Sport" : "Create Sport"}
               </Button>
             </div>
@@ -778,7 +788,7 @@ export default function Sports() {
             {playerErrors.general && <div className="rounded-xl bg-red-50 border border-red-200 p-3"><p className="text-sm font-medium text-red-700">{playerErrors.general}</p></div>}
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={onClosePlayerModal}>Cancel</Button>
-              <Button onClick={registerPlayer} disabled={playerSubmitting || !playerForm.studentId || !playerForm.role || playerErrors.studentId || playerErrors.role || playerErrors.jerseyNumber}>
+              <Button onClick={registerPlayer} disabled={playerSubmitting}>
                 {playerSubmitting ? "Saving..." : "Register Player"}
               </Button>
             </div>
