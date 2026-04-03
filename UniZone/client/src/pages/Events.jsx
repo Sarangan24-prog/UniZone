@@ -23,10 +23,12 @@ export default function Events() {
   const [q, setQ] = useState("");
   const [month, setMonth] = useState("all");
   const [sort, setSort] = useState("date_asc");
+  const [tab, setTab] = useState("all");
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [err, setErr] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [form, setForm] = useState({ title: "", location: "", dateTime: "", capacity: 100, description: "" });
 
   const load = async () => {
@@ -40,8 +42,14 @@ export default function Events() {
 
   const resetForm = () => setForm({ title: "", location: "", dateTime: "", capacity: 100, description: "" });
 
-  const onCreate = () => { resetForm(); setEditing(null); setErr(""); setOpen(true); };
-
+  //const onCreate = () => { resetForm(); setEditing(null); setErr(""); setOpen(true); };
+const onCreate = () => {
+  resetForm();
+  setEditing(null);
+  setErr("");
+  setFieldErrors({});
+  setOpen(true);
+};
   const onEdit = (row) => {
     setEditing(row);
     setForm({
@@ -52,7 +60,9 @@ export default function Events() {
       description: row.description || ""
     });
     setErr("");
-    setOpen(true);
+    setFieldErrors({});
+
+    //setOpen(true);
   };
 
   const save = async () => {
@@ -64,9 +74,36 @@ export default function Events() {
        alert("Event saved successfully")
       setOpen(false);
       load();
-    } catch (e) {
+    } /*catch (e) {
       setErr(e.response?.data?.message || "Save failed");
-    }
+    }*/
+   catch (e) {
+  const data = e.response?.data;
+  const message = data?.message || "Save failed";
+
+  const extractedErrors = {};
+
+  if (message.includes("title:")) {
+    extractedErrors.title = "Event title is required";
+  }
+  if (message.includes("location:")) {
+    extractedErrors.location = "Location is required";
+  }
+  if (message.includes("dateTime:")) {
+    extractedErrors.dateTime = "Date and time is required";
+  }
+  if (message.includes("capacity:")) {
+    extractedErrors.capacity = "Capacity is invalid";
+  }
+
+  if (Object.keys(extractedErrors).length > 0) {
+    setFieldErrors(extractedErrors);
+    setErr("");
+  } else {
+    setErr(message);
+    setFieldErrors({});
+  }
+}
   };
 
   const del = async (id) => {
@@ -150,6 +187,13 @@ const unreg = async (event) => {
 
     return out;
   }, [items, q, month, sort]);
+  //reg table
+  const myEvents = items.filter(x =>
+  x.registeredUsers?.some(u => u._id === user?._id)
+);
+
+console.log("items", items);
+console.log("user", user);
 
   const columns = [
     { key: "title", header: "Title" },
@@ -159,12 +203,17 @@ const unreg = async (event) => {
     {
       key: "actions", header: "Actions", render: (r) => (
         <div className="flex flex-wrap gap-2">
-          {isStudent && (
-            <>
-              <Button onClick={() => reg(r)}>Register</Button>
-              <Button variant="outline" onClick={() => unreg(r)}>Unregister</Button>
-            </>
-          )}
+          {isStudent && tab === "my" && (
+  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 text-green-700 font-medium text-sm animate-pulse">
+    ✅ Registered
+  </span>
+)}
+{isStudent && tab !== "my" && (
+  <>
+    <Button onClick={() => reg(r)}>Register</Button>
+    <Button variant="outline" onClick={() => unreg(r)}>Unregister</Button>
+  </>
+)}
           {isStaff && (
             <>
               <Button variant="outline" onClick={() => onEdit(r)}>Edit</Button>
@@ -197,16 +246,28 @@ const unreg = async (event) => {
             <option value="date_desc">Latest first</option>
             <option value="title_asc">Title A→Z</option>
             <option value="title_desc">Title Z→A</option>
-          </Select>
+          </Select>                                                                                                     
         </div>
       </Card>
 
       <div className="mt-4">
-        {loading ? <Loading /> : filtered.length === 0 ? (
-          <EmptyState title="No events found" subtitle="Try a different search or month filter." />
-        ) : (
-          <Table columns={columns} rows={filtered} />
-        )}
+  {isStudent && (
+    <div className="flex gap-2 mb-4">
+      <Button variant={tab === "all" ? "default" : "outline"} onClick={() => setTab("all")}>All Events</Button>
+      <Button variant={tab === "my" ? "default" : "outline"} onClick={() => setTab("my")}>My Registrations</Button>
+    </div>
+  )}
+       {loading ? <Loading /> : tab === "my" ? (
+  myEvents.length === 0 ? (
+    <EmptyState title="No registrations" subtitle="You have not registered for any events." />
+  ) : (
+    <Table columns={columns} rows={myEvents} />
+  )
+) : filtered.length === 0 ? (
+  <EmptyState title="No events found" subtitle="Try a different search or month filter." />
+) : (
+  <Table columns={columns} rows={filtered} />
+)}
       </div>
 
       <Modal
@@ -224,10 +285,52 @@ const unreg = async (event) => {
         )}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <Input label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <Input label="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-          <Input label="Date & Time" type="datetime-local" value={form.dateTime} onChange={(e) => setForm({ ...form, dateTime: e.target.value })} />
-          <Input label="Capacity" type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: +e.target.value })} />
+          <div>
+  <Input
+    label="Title"
+    value={form.title}
+    onChange={(e) => {
+      setForm({ ...form, title: e.target.value });
+      setFieldErrors((prev) => ({ ...prev, title: "" }));
+    }}
+  />
+  {fieldErrors.title && <p className="text-red-500 text-sm mt-1">{fieldErrors.title}</p>}
+</div>
+         <div>
+  <Input
+    label="Location"
+    value={form.location}
+    onChange={(e) => {
+      setForm({ ...form, location: e.target.value });
+      setFieldErrors((prev) => ({ ...prev, location: "" }));
+    }}
+  />
+  {fieldErrors.location && <p className="text-red-500 text-sm mt-1">{fieldErrors.location}</p>}
+</div>
+          <div>
+  <Input
+    label="Date & Time"
+    type="datetime-local"
+    value={form.dateTime}
+    onChange={(e) => {
+      setForm({ ...form, dateTime: e.target.value });
+      setFieldErrors((prev) => ({ ...prev, dateTime: "" }));
+    }}
+  />
+  {fieldErrors.dateTime && <p className="text-red-500 text-sm mt-1">{fieldErrors.dateTime}</p>}
+</div>
+          <div>
+  <Input
+    label="Capacity"
+    type="number"
+    value={form.capacity}
+    onChange={(e) => {
+      setForm({ ...form, capacity: +e.target.value });
+      setFieldErrors((prev) => ({ ...prev, capacity: "" }));
+    }}
+  />
+  {fieldErrors.capacity && <p className="text-red-500 text-sm mt-1">{fieldErrors.capacity}</p>}
+</div>
           <div className="sm:col-span-2">
             <TextArea label="Description" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
