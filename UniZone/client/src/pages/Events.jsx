@@ -84,7 +84,13 @@ export default function Events() {
 
   const resetForm = () => setForm({ title: "", location: "", dateTime: "", capacity: 100, description: "" });
 
-  const onCreate = () => { resetForm(); setEditing(null); setErr(""); setOpen(true); };
+  const onCreate = () => {
+    resetForm();
+    setEditing(null);
+    setErr("");
+    setFieldErrors({});
+    setOpen(true);
+  };
 
   const onEdit = (row) => {
     setEditing(row);
@@ -96,6 +102,7 @@ export default function Events() {
       description: row.description || ""
     });
     setErr("");
+    setFieldErrors({});
     setOpen(true);
   };
 
@@ -110,7 +117,19 @@ export default function Events() {
       setOpen(false);
       load();
     } catch (e) {
-      setErr(e.response?.data?.message || "Save failed");
+      const message = e.response?.data?.message || "Save failed";
+      const extractedErrors = {};
+      if (message.includes("title:")) extractedErrors.title = "Event title is required";
+      if (message.includes("location:")) extractedErrors.location = "Location is required";
+      if (message.includes("dateTime:")) extractedErrors.dateTime = "Date and time is required";
+      if (message.includes("capacity:")) extractedErrors.capacity = "Capacity is invalid";
+      if (Object.keys(extractedErrors).length > 0) {
+        setFieldErrors(extractedErrors);
+        setErr("");
+      } else {
+        setErr(message);
+        setFieldErrors({});
+      }
     }
   };
 
@@ -211,6 +230,16 @@ export default function Events() {
     return out;
   }, [items, q, month, sort]);
 
+  const myEvents = items.filter(x =>
+    x.registeredUsers?.some(u => u._id === user?._id)
+  );
+
+  const upcomingCount = items.filter(x => new Date(x.dateTime) > now).length;
+  const endedCount = items.filter(x => new Date(x.dateTime) <= now).length;
+  const pendingTickets = tickets.filter(t => t.status === "pending").length;
+
+  const navItems = isStudent ? NAV_ITEMS_STUDENT : NAV_ITEMS_STAFF;
+
   const columns = [
     { key: "title", header: "Title" },
     { key: "location", header: "Location" },
@@ -223,7 +252,20 @@ export default function Events() {
     {
       key: "actions", header: "Actions", render: (r) => (
         <div className="flex flex-wrap gap-2">
-          {isStudent && (
+          {isStudent && activeNav === "my" && (
+            <div className="flex gap-2 items-center">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-500 bg-opacity-20 text-green-400 font-medium text-sm animate-pulse">
+                ✅ Registered
+              </span>
+              <button
+                onClick={() => openTicket(r)}
+                className="px-3 py-1 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition-all"
+              >
+                🎟️ Raise Ticket
+              </button>
+            </div>
+          )}
+          {isStudent && activeNav !== "my" && (
             <>
               <Button onClick={() => reg(r)}>Register</Button>
               <Button variant="outline" onClick={() => unreg(r)}>Unregister</Button>
@@ -241,36 +283,189 @@ export default function Events() {
   ];
 
   return (
-    <PageShell
-      title="Events"
-      subtitle="Search, filter by month, and manage events"
-      right={isStaff && <Button onClick={onCreate}>New Event</Button>}
-    >
-      <Card glass>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Input label="Search (title/location)" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Sports day..." />
-          <Select label="Month" value={month} onChange={(e) => setMonth(e.target.value)}>
-            <option value="all">All</option>
-            <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
-            <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
-            <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
-            <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
-          </Select>
-          <Select label="Sort" value={sort} onChange={(e) => setSort(e.target.value)}>
-            <option value="date_asc">Upcoming first</option>
-            <option value="date_desc">Latest first</option>
-            <option value="title_asc">Title A→Z</option>
-            <option value="title_desc">Title Z→A</option>
-          </Select>
-        </div>
-      </Card>
+    <div className="min-h-screen bg-gradient-to-br from-[#0a0f2c] via-[#0d1b4b] to-[#1a0a3c] text-white">
 
-      <div className="mt-4">
-        {loading ? <Loading /> : filtered.length === 0 ? (
-          <EmptyState title="No events found" subtitle="Try a different search or month filter." />
-        ) : (
-          <Table columns={columns} rows={filtered} />
+      {/* Registration Success Banner */}
+      {showRegSuccess && (
+        <div className="mx-8 mt-4 rounded-2xl bg-green-500 bg-opacity-20 border border-green-400 border-opacity-40 p-4 flex items-center gap-3">
+          <span className="text-2xl">🎉</span>
+          <div>
+            <p className="text-green-300 font-semibold">You are registered successfully!</p>
+            <p className="text-green-400 text-sm">You can now raise a ticket 🎟️ from My Registrations tab.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="px-8 pt-10 pb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-5xl font-extrabold text-white tracking-tight">Event Management</h1>
+          <p className="text-blue-300 mt-2 text-lg">Manage and explore university events</p>
+        </div>
+        <div className="flex gap-3 mt-2">
+          {isStaff && (
+            <>
+              <button
+                onClick={() => setAdminTicketOpen(true)}
+                //className="relative px-6 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-semibold tracking-widest text-sm uppercase transition-all duration-200 shadow-lg"
+                className="relative px-6 py-3 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-semibold tracking-wide text-sm uppercase transition-all duration-200 shadow-xl"
+              >
+                🎟️ TICKET REQUESTS
+                {pendingTickets > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                    {pendingTickets}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={onCreate}
+                //className="px-6 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold tracking-widest text-sm uppercase transition-all duration-200 shadow-lg"
+                className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-blue-500 hover:to-indigo-400 text-white font-semibold tracking-wide text-sm uppercase transition-all duration-200 shadow-xl"
+              >
+                + NEW EVENT
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="px-8 grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+        <div className="rounded-2xl border border-white border-opacity-10 bg-white bg-opacity-5 p-5 text-center backdrop-blur">
+          <p className="text-3xl font-bold text-white">{items.length}</p>
+          <p className="text-blue-300 text-sm mt-1">Total Events</p>
+        </div>
+        {isStudent && (
+          <div className="rounded-2xl border border-white border-opacity-10 bg-white bg-opacity-5 p-5 text-center backdrop-blur">
+            <p className="text-3xl font-bold text-green-400">{myEvents.length}</p>
+            <p className="text-blue-300 text-sm mt-1">My Registrations</p>
+          </div>
         )}
+        <div className="rounded-2xl border border-white border-opacity-10 bg-white bg-opacity-5 p-5 text-center backdrop-blur">
+          <p className="text-3xl font-bold text-yellow-400">{upcomingCount}</p>
+          <p className="text-blue-300 text-sm mt-1">Upcoming</p>
+        </div>
+        <div className="rounded-2xl border border-white border-opacity-10 bg-white bg-opacity-5 p-5 text-center backdrop-blur">
+          <p className="text-3xl font-bold text-red-400">{endedCount}</p>
+          <p className="text-blue-300 text-sm mt-1">Ended</p>
+        </div>
+      </div>
+
+      {/* Main Layout */}
+      <div className="px-8 pb-10 flex gap-6">
+
+        {/* Side Navigator */}
+        <div className="w-56 flex-shrink-0">
+          <div className="rounded-2xl bg-white bg-opacity-5 border border-white border-opacity-10 p-4 backdrop-blur">
+            <p className="text-xs font-bold text-blue-300 tracking-widest mb-4 uppercase">Event Navigator</p>
+            <div className="space-y-1">
+              {navItems.map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => setActiveNav(item.key)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    activeNav === item.key
+                      ? "bg-blue-600 text-white shadow-lg"
+                      : "text-blue-200 hover:bg-white hover:bg-opacity-10"
+                  }`}
+                >
+                  <span>{item.icon}</span>
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1">
+
+          {/* All Events */}
+          {activeNav === "all" && (
+            <div className="rounded-2xl bg-white bg-opacity-5 border border-white border-opacity-10 p-6 backdrop-blur">
+              <h2 className="text-xl font-bold text-white mb-4">All Events</h2>
+              <div className="grid gap-3 sm:grid-cols-3 mb-6">
+                <Input label="Search (title/location)" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Sports day..." />
+                <Select label="Month" value={month} onChange={(e) => setMonth(e.target.value)}>
+                  <option value="all">All</option>
+                  <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
+                  <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
+                  <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
+                  <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
+                </Select>
+                <Select label="Sort" value={sort} onChange={(e) => setSort(e.target.value)}>
+                  <option value="date_asc">Upcoming first</option>
+                  <option value="date_desc">Latest first</option>
+                  <option value="title_asc">Title A→Z</option>
+                  <option value="title_desc">Title Z→A</option>
+                </Select>
+              </div>
+              {loading ? <Loading /> : filtered.length === 0 ? (
+                <EmptyState title="No events found" subtitle="Try a different search or month filter." />
+              ) : (
+                <Table columns={columns} rows={filtered} />
+              )}
+            </div>
+          )}
+
+          {/* My Registrations */}
+          {activeNav === "my" && isStudent && (
+            <div className="rounded-2xl bg-white bg-opacity-5 border border-white border-opacity-10 p-6 backdrop-blur">
+              <h2 className="text-xl font-bold text-white mb-4">My Registrations</h2>
+              {loading ? <Loading /> : myEvents.length === 0 ? (
+                <EmptyState title="No registrations" subtitle="You have not registered for any events." />
+              ) : (
+                <Table columns={columns} rows={myEvents} />
+              )}
+            </div>
+          )}
+
+          {/* Event Statistics */}
+          {activeNav === "stats" && (
+            <div className="rounded-2xl bg-white bg-opacity-5 border border-white border-opacity-10 p-6 backdrop-blur">
+              <h2 className="text-xl font-bold text-white mb-6">Event Statistics</h2>
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="rounded-xl bg-blue-600 bg-opacity-20 border border-blue-500 border-opacity-30 p-5">
+                  <p className="text-blue-300 text-sm">Total Events</p>
+                  <p className="text-4xl font-bold text-white mt-1">{items.length}</p>
+                </div>
+                <div className="rounded-xl bg-green-600 bg-opacity-20 border border-green-500 border-opacity-30 p-5">
+                  <p className="text-green-300 text-sm">Upcoming Events</p>
+                  <p className="text-4xl font-bold text-white mt-1">{upcomingCount}</p>
+                </div>
+                <div className="rounded-xl bg-red-600 bg-opacity-20 border border-red-500 border-opacity-30 p-5">
+                  <p className="text-red-300 text-sm">Ended Events</p>
+                  <p className="text-4xl font-bold text-white mt-1">{endedCount}</p>
+                </div>
+                {isStudent && (
+                  <div className="rounded-xl bg-purple-600 bg-opacity-20 border border-purple-500 border-opacity-30 p-5">
+                    <p className="text-purple-300 text-sm">My Registrations</p>
+                    <p className="text-4xl font-bold text-white mt-1">{myEvents.length}</p>
+                  </div>
+                )}
+              </div>
+              <h3 className="text-white font-semibold mb-3">All Events Status</h3>
+              <div className="space-y-2">
+                {items.map(ev => {
+                  const cd = getCountdown(ev.dateTime);
+                  return (
+                    <div key={ev._id} className="flex items-center justify-between rounded-xl bg-white bg-opacity-5 px-4 py-3">
+                      <div>
+                        <p className="text-white font-medium">{ev.title}</p>
+                        <p className="text-blue-300 text-xs">{ev.location} — {new Date(ev.dateTime).toLocaleDateString()}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-blue-300 text-sm">{ev.registeredUsers?.length || 0}/{ev.capacity}</span>
+                        <span className={`font-mono text-xs font-medium ${cd.color}`}>{cd.label}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+        </div>
       </div>
 
       {/* Create/Edit Event Modal */}
@@ -289,10 +484,22 @@ export default function Events() {
         )}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <Input label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <Input label="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-          <Input label="Date & Time" type="datetime-local" value={form.dateTime} onChange={(e) => setForm({ ...form, dateTime: e.target.value })} />
-          <Input label="Capacity" type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: +e.target.value })} />
+          <div>
+            <Input label="Title" value={form.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); setFieldErrors((prev) => ({ ...prev, title: "" })); }} />
+            {fieldErrors.title && <p className="text-red-500 text-sm mt-1">{fieldErrors.title}</p>}
+          </div>
+          <div>
+            <Input label="Location" value={form.location} onChange={(e) => { setForm({ ...form, location: e.target.value }); setFieldErrors((prev) => ({ ...prev, location: "" })); }} />
+            {fieldErrors.location && <p className="text-red-500 text-sm mt-1">{fieldErrors.location}</p>}
+          </div>
+          <div>
+            <Input label="Date & Time" type="datetime-local" value={form.dateTime} onChange={(e) => { setForm({ ...form, dateTime: e.target.value }); setFieldErrors((prev) => ({ ...prev, dateTime: "" })); }} />
+            {fieldErrors.dateTime && <p className="text-red-500 text-sm mt-1">{fieldErrors.dateTime}</p>}
+          </div>
+          <div>
+            <Input label="Capacity" type="number" value={form.capacity} onChange={(e) => { setForm({ ...form, capacity: +e.target.value }); setFieldErrors((prev) => ({ ...prev, capacity: "" })); }} />
+            {fieldErrors.capacity && <p className="text-red-500 text-sm mt-1">{fieldErrors.capacity}</p>}
+          </div>
           <div className="sm:col-span-2">
             <TextArea label="Description" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
@@ -374,5 +581,6 @@ export default function Events() {
       </Modal>
 
     </PageShell>
+    </div>
   );
 }
