@@ -469,16 +469,14 @@ export default function Sports() {
       subtitle="Discover, join, and manage campus sports activities"
       right={(
         <div className="flex gap-3">
-          {isStaff && (
-            <Button
+          <Button
               onClick={() => navigate('/sports/equipment')}
               className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/40 border-none !px-6 !py-3 rounded-2xl transform active:scale-95 transition-all"
             >
               <span className="flex items-center gap-2">
-                <span className="text-lg">⚾</span> Add Equipment
+                <span className="text-lg">⚾</span> {isStaff ? "Manage Equipment" : "Book Equipment"}
               </span>
             </Button>
-          )}
           {isStaff && (
             <Button
               onClick={onCreate}

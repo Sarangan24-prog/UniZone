@@ -32,8 +32,13 @@ exports.addEquipment = async (req, res) => {
 exports.getAllEquipment = async (req, res) => {
   try {
     const equipment = await Equipment.find().sort({ createdAt: -1 });
+    console.log(`📦 [${new Date().toLocaleTimeString()}] ${req.user?.name || 'Unknown'} (${req.user?.role}) fetched ${equipment.length} equipment items`);
+    if (equipment.length > 0) {
+      console.log("Sample equipment:", JSON.stringify(equipment[0], null, 2));
+    }
     res.json(equipment);
   } catch (error) {
+    console.error("❌ Error fetching equipment:", error);
     res.status(500).json({ message: 'Failed to fetch equipment' });
   }
 };
