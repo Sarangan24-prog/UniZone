@@ -80,4 +80,35 @@ router.delete('/:id', authenticate, authorize('admin', 'staff'), async (req, res
   }
 });
 
+// STUDENT scans QR to mark attendance
+router.post('/scan', authenticate, async (req, res) => {
+  try {
+    if (req.user.role !== 'student') {
+      return res.status(403).json({ message: 'Only students can mark attendance via scan' });
+    }
+
+    const { courseId, date, sessionId } = req.body;
+    
+    // Create attendance record
+    const item = await Attendance.create({
+      course: courseId,
+      student: req.user._id,
+      date,
+      status: 'Present',
+      markedBy: req.user._id
+    });
+
+    const populated = await item.populate([
+      { path: 'course', select: 'title code department' },
+      { path: 'student', select: 'name email' }
+    ]);
+    res.status(201).json(populated);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'You have already marked your attendance for this session' });
+    }
+    res.status(400).json({ message: error.message });
+  }
+});
+
 module.exports = router;

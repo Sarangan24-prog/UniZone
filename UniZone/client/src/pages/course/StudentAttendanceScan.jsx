@@ -3,6 +3,7 @@ import { Scanner } from "@yudiel/react-qr-scanner";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import { useNavigate } from "react-router-dom";
+import api from "../../api/client";
 
 export default function StudentAttendanceScan() {
   const navigate = useNavigate();
@@ -10,15 +11,21 @@ export default function StudentAttendanceScan() {
   const [scannedData, setScannedData] = useState(null);
   const [hasScanned, setHasScanned] = useState(false);
 
-  const handleScan = (result) => {
+  const handleScan = async (result) => {
     try {
       const rawValue = result?.[0]?.rawValue;
       if (!rawValue || hasScanned) return;
 
       const parsed = JSON.parse(rawValue);
       setScannedData(parsed);
-      setMessage("QR scanned successfully. Backend can be connected later.");
       setHasScanned(true);
+
+      try {
+        await api.post('/attendance/scan', parsed);
+        setMessage("Attendance marked successfully!");
+      } catch (err) {
+        setMessage(err.response?.data?.message || "Failed to mark attendance.");
+      }
     } catch (error) {
       setMessage("Invalid QR code.");
       setHasScanned(true);
