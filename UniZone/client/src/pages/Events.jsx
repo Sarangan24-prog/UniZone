@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+ import { useEffect, useMemo, useState } from "react";
 import api from "../api/client";
 import Button from "../components/Button";
 import Input from "../components/Input";
@@ -40,17 +40,15 @@ export default function Events() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [form, setForm] = useState({ title: "", location: "", dateTime: "", capacity: 100, description: "" });
 
-  // Ticket states — saved in localStorage so data persists between logins
-  const [tickets, setTickets] = useState(() => {
-    const saved = localStorage.getItem("eventTickets");
-    return saved ? JSON.parse(saved) : [];
-  });
+  // Ticket states - using real API
+  const [tickets, setTickets] = useState([]);
   const [ticketOpen, setTicketOpen] = useState(false);
   const [ticketEvent, setTicketEvent] = useState(null);
   const [ticketForm, setTicketForm] = useState({ name: "", email: "", phone: "" });
   const [ticketErrors, setTicketErrors] = useState({});
   const [adminTicketOpen, setAdminTicketOpen] = useState(false);
   const [showRegSuccess, setShowRegSuccess] = useState(false);
+  const [ticketLoading, setTicketLoading] = useState(false);
 
   // Countdown timer tick
   const [tick, setTick] = useState(0);
@@ -77,7 +75,18 @@ export default function Events() {
     setLoading(false);
   };
 
+  const loadTickets = async () => {
+    if (!isStaff) return;
+    try {
+      const res = await api.get("/tickets");
+      setTickets(res.data);
+    } catch (e) {
+      console.error("Failed to load tickets", e);
+    }
+  };
+
   useEffect(() => { load(); }, []);
+  useEffect(() => { loadTickets(); }, [isStaff]);
 
   const resetForm = () => setForm({ title: "", location: "", dateTime: "", capacity: 100, description: "" });
 
@@ -139,7 +148,7 @@ export default function Events() {
   const reg = async (event) => {
     const registeredCount = event.registeredUsers?.length || 0;
     if (registeredCount >= event.capacity) { alert("Event is full"); return; }
-    const alreadyRegistered = event.registeredUsers?.some(u => u._id === user?._id);
+    const alreadyRegistered = event.registeredUsers?.some(u => String(u._id || u) === String(user?._id));
     if (alreadyRegistered) { alert("You are already registered"); return; }
     if (new Date(event.dateTime) < new Date()) { alert("Event already finished"); return; }
     await api.post(`/events/${event._id}/register`);
@@ -149,14 +158,14 @@ export default function Events() {
   };
 
   const unreg = async (event) => {
-    const alreadyRegistered = event.registeredUsers?.some(u => u._id === user?._id);
+    const alreadyRegistered = event.registeredUsers?.some(u => String(u._id || u) === String(user?._id));
     if (!alreadyRegistered) { alert("You are not registered for this event"); return; }
     if (!window.confirm("Are you sure you want to unregister?")) return;
     await api.post(`/events/${event._id}/unregister`);
     load();
   };
 
-  // Ticket functions
+  // Ticket functions - using real API
   const openTicket = (event) => {
     setTicketEvent(event);
     setTicketForm({ name: "", email: "", phone: "" });
@@ -164,40 +173,40 @@ export default function Events() {
     setTicketOpen(true);
   };
 
-  const submitTicket = () => {
+  const submitTicket = async () => {
     const errors = {};
     if (!ticketForm.name.trim()) errors.name = "Name is required";
     if (!ticketForm.email.trim()) errors.email = "Email is required";
     if (!ticketForm.phone.trim()) errors.phone = "Phone is required";
     if (Object.keys(errors).length > 0) { setTicketErrors(errors); return; }
 
-    const newTicket = {
-      id: Date.now(),
-      eventTitle: ticketEvent?.title,
-      name: ticketForm.name,
-      email: ticketForm.email,
-      phone: ticketForm.phone,
-      status: "pending",
-      raisedAt: new Date().toLocaleString()
-    };
-
-    setTickets(prev => {
-      const updated = [...prev, newTicket];
-      localStorage.setItem("eventTickets", JSON.stringify(updated));
-      return updated;
-    });
-
-    setTicketOpen(false);
-    alert("🎟️ Ticket raised successfully! Admin will confirm soon.");
+    try {
+      setTicketLoading(true);
+      await api.post("/tickets", {
+        eventId: ticketEvent._id,
+        eventTitle: ticketEvent.title,
+        name: ticketForm.name,
+        email: ticketForm.email,
+        phone: ticketForm.phone
+      });
+      setTicketOpen(false);
+      alert("🎟️ Ticket raised successfully! Admin will confirm soon.");
+    } catch (e) {
+      alert("Failed to raise ticket. Please try again.");
+    } finally {
+      setTicketLoading(false);
+    }
   };
 
-  const confirmTicket = (id) => {
-    setTickets(prev => {
-      const updated = prev.map(t => t.id === id ? { ...t, status: "confirmed" } : t);
-      localStorage.setItem("eventTickets", JSON.stringify(updated));
-      return updated;
-    });
-    alert("✅ Ticket confirmed! Email will be sent to student.");
+  const confirmTicket = async (id) => {
+    try {
+      await api.put(`/tickets/${id}/confirm`);
+      loadTickets();
+      alert("✅ Ticket confirmed! Email sent to student.");
+    } catch (e) {
+       const message = e.response?.data?.message || "Failed to raise ticket. Please try again.";
+  alert(message);
+    }
   };
 
   const now = new Date();
@@ -228,7 +237,7 @@ export default function Events() {
   }, [items, q, month, sort]);
 
   const myEvents = items.filter(x =>
-    x.registeredUsers?.some(u => u._id === user?._id)
+    x.registeredUsers?.some(u => String(u._id || u) === String(user?._id))
   );
 
   const upcomingCount = items.filter(x => new Date(x.dateTime) > now).length;
@@ -303,8 +312,7 @@ export default function Events() {
           {isStaff && (
             <>
               <button
-                onClick={() => setAdminTicketOpen(true)}
-                //className="relative px-6 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-semibold tracking-widest text-sm uppercase transition-all duration-200 shadow-lg"
+                onClick={() => { setAdminTicketOpen(true); loadTickets(); }}
                 className="relative px-6 py-3 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-semibold tracking-wide text-sm uppercase transition-all duration-200 shadow-xl"
               >
                 🎟️ TICKET REQUESTS
@@ -316,7 +324,6 @@ export default function Events() {
               </button>
               <button
                 onClick={onCreate}
-                //className="px-6 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold tracking-widest text-sm uppercase transition-all duration-200 shadow-lg"
                 className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-blue-500 hover:to-indigo-400 text-white font-semibold tracking-wide text-sm uppercase transition-all duration-200 shadow-xl"
               >
                 + NEW EVENT
@@ -461,7 +468,6 @@ export default function Events() {
               </div>
             </div>
           )}
-
         </div>
       </div>
 
@@ -511,7 +517,9 @@ export default function Events() {
         footer={(
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setTicketOpen(false)}>Cancel</Button>
-            <Button onClick={submitTicket}>Submit Ticket</Button>
+            <Button onClick={submitTicket} disabled={ticketLoading}>
+              {ticketLoading ? "Submitting..." : "Submit Ticket"}
+            </Button>
           </div>
         )}
       >
@@ -543,26 +551,27 @@ export default function Events() {
           </div>
         )}
       >
-        <div className="space-y-3">
+        {/* ✅ Added max height and scroll */}
+        <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
           {tickets.length === 0 ? (
             <p className="text-center text-gray-400 py-6">No ticket requests yet.</p>
           ) : (
             tickets.map(t => (
-              <div key={t.id} className="rounded-xl border border-gray-200 p-4 space-y-1">
+              <div key={t._id} className="rounded-xl border border-gray-200 p-4 space-y-1">
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-semibold text-gray-800">{t.name}</p>
                     <p className="text-sm text-gray-500">{t.email} • {t.phone}</p>
                     <p className="text-xs text-gray-400">Event: {t.eventTitle}</p>
-                    <p className="text-xs text-gray-400">Raised: {t.raisedAt}</p>
+                    <p className="text-xs text-gray-400">Raised: {new Date(t.createdAt).toLocaleString()}</p>
                   </div>
                   <div>
                     {t.status === "pending" ? (
                       <button
-                        onClick={() => confirmTicket(t.id)}
+                        onClick={() => confirmTicket(t._id)}
                         className="px-4 py-2 rounded-full bg-green-600 hover:bg-green-500 text-white text-xs font-semibold transition-all"
                       >
-                        ✅ Confirm
+                        ✅ Confirm & Send Email
                       </button>
                     ) : (
                       <span className="px-4 py-2 rounded-full bg-green-100 text-green-700 text-xs font-semibold">

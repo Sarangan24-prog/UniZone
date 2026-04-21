@@ -25,6 +25,12 @@ const attendanceRoutes = require("./routes/course/attendanceRoutes");
 const userRoutes = require('./routes/userRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
+//const authRoutes = require('./routes/authRoutes');
+//const courseRoutes = require('./routes/courseRoutes');
+//const eventRoutes = require('./routes/eventRoutes');
+//const sportRoutes = require('./routes/sportRoutes');
+//const serviceRoutes = require('./routes/serviceRoutes');
+const ticketRoutes = require('./routes/ticketRoutes');// Add ticket routes
 
 const path = require("path");
 const fs = require("fs");
@@ -60,6 +66,12 @@ app.use("/api/attendance", attendanceRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/sports', sportRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/tickets', ticketRoutes); // Add ticket routes
 
 // Test route to verify server registration
 app.get('/api/test-users', (req, res) => res.json({ message: "User routes are accessible" }));
