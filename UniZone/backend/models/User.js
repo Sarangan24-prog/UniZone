@@ -28,6 +28,11 @@ const userSchema = new mongoose.Schema({
   profilePic: {
     type: String,
     default: ''
+  },
+  regNo: {
+    type: String,
+    trim: true,
+    default: ''
   }
 }, {
   timestamps: true

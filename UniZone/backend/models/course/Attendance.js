@@ -23,6 +23,14 @@ const attendanceSchema = new mongoose.Schema({
   markedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+  regNo: {
+    type: String,
+    required: [true, 'Registration number is required']
+  },
+  studentName: {
+    type: String,
+    required: [true, 'Student name is required']
   }
 }, {
   timestamps: true

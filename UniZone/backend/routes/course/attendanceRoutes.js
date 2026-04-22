@@ -3,8 +3,54 @@ const router = express.Router();
 const { authenticate, authorize } = require('../../middleware/auth');
 const Attendance = require('../../models/course/Attendance');
 const User = require('../../models/User');
+const AttendanceSession = require('../../models/course/AttendanceSession');
 
-// GET attendance records — admin sees all, student sees own
+// --- SESSIONS ---
+
+// GET active sessions
+router.get('/sessions/active', authenticate, async (req, res) => {
+  try {
+    const sessions = await AttendanceSession.find({ active: true })
+      .populate('course', 'title code department')
+      .populate('createdBy', 'name');
+    res.json(sessions);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// CREATE session (admin/staff only)
+router.post('/sessions', authenticate, authorize('admin', 'staff'), async (req, res) => {
+  try {
+    const { courseId, date, sessionId } = req.body;
+    const session = await AttendanceSession.create({
+      course: courseId,
+      date,
+      sessionId,
+      createdBy: req.user._id
+    });
+    res.status(201).json(session);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// END session
+router.patch('/sessions/:id/end', authenticate, authorize('admin', 'staff'), async (req, res) => {
+  try {
+    const session = await AttendanceSession.findByIdAndUpdate(
+      req.params.id,
+      { active: false },
+      { new: true }
+    );
+    if (!session) return res.status(404).json({ message: 'Session not found' });
+    res.json(session);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// --- ATTENDANCE ---
 router.get('/', authenticate, async (req, res) => {
   try {
     const filter = req.user.role === 'student' ? { student: req.user._id } : {};
@@ -87,7 +133,7 @@ router.post('/scan', authenticate, async (req, res) => {
       return res.status(403).json({ message: 'Only students can mark attendance via scan' });
     }
 
-    const { courseId, date, sessionId } = req.body;
+    const { courseId, date, sessionId, regNo, studentName } = req.body;
     
     // Create attendance record
     const item = await Attendance.create({
@@ -95,7 +141,9 @@ router.post('/scan', authenticate, async (req, res) => {
       student: req.user._id,
       date,
       status: 'Present',
-      markedBy: req.user._id
+      markedBy: req.user._id,
+      regNo,
+      studentName
     });
 
     const populated = await item.populate([
@@ -109,6 +157,26 @@ router.post('/scan', authenticate, async (req, res) => {
     }
     res.status(400).json({ message: error.message });
   }
+});
+
+// GET local IP for QR codes
+router.get('/config/ip', authenticate, (req, res) => {
+  const os = require('os');
+  const networkInterfaces = os.networkInterfaces();
+  let ip = 'localhost';
+  
+  for (const interfaceName in networkInterfaces) {
+    const interfaces = networkInterfaces[interfaceName];
+    for (const iface of interfaces) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        ip = iface.address;
+        break;
+      }
+    }
+    if (ip !== 'localhost') break;
+  }
+  
+  res.json({ ip });
 });
 
 module.exports = router;
