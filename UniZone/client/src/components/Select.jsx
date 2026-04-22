@@ -1,13 +1,16 @@
-export default function Select({ label, children, className = "", ...props }) {
-  const baseClass = "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition-all duration-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 hover:border-slate-300 shadow-sm cursor-pointer appearance-none";
+export default function Select({ label, error, children, className = "", ...props }) {
+  const baseClass = "w-full rounded-2xl border-2 px-4 py-3.5 text-sm text-white outline-none transition-all duration-300 cursor-pointer appearance-none shadow-inner [&>option]:bg-slate-800 [&>option]:text-white";
+  const stateClass = error 
+    ? "border-red-500/50 bg-red-500/5 focus:border-red-500 focus:ring-4 focus:ring-red-500/10" 
+    : "border-white/5 bg-white/5 focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 hover:border-white/10 hover:bg-white/10";
 
   return (
     <label className="block mb-1">
-      {label && <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">{label}</span>}
+      {label && <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{label}</span>}
       <div className="relative">
         <select
           {...props}
-          className={`${baseClass} ${className}`.trim()}
+          className={`${baseClass} ${stateClass} ${className}`.trim()}
         >
           {children}
         </select>
@@ -17,6 +20,7 @@ export default function Select({ label, children, className = "", ...props }) {
           </svg>
         </div>
       </div>
+      {error && <span className="mt-1.5 block text-xs font-semibold text-red-400 px-1">{error}</span>}
     </label>
   );
 }
