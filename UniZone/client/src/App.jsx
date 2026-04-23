@@ -18,6 +18,7 @@ import Equipment from "./pages/Equipment";
 import Services from "./pages/Services";
 import Profile from "./pages/Profile";
 import AdminRequests from "./pages/AdminRequests";
+import SportRosters from "./pages/SportRosters";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
@@ -51,6 +52,16 @@ if (loading) {
                   <ProtectedRoute>
                     <RoleRoute roles={["admin", "staff"]}>
                       <AdminRequests />
+                    </RoleRoute>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/sports/rosters"
+                element={
+                  <ProtectedRoute>
+                    <RoleRoute roles={["admin", "staff"]}>
+                      <SportRosters />
                     </RoleRoute>
                   </ProtectedRoute>
                 }
