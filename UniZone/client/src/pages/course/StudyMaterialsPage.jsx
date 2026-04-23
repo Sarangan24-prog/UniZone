@@ -5,6 +5,7 @@ import Input from "../../components/Input";
 import Button from "../../components/Button";
 import Modal from "../../components/Modal";
 import TextArea from "../../components/TextArea";
+import FileDropZone from "../../components/FileDropZone";
 
 export default function StudyMaterialsPage() {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -25,6 +26,7 @@ export default function StudyMaterialsPage() {
     type: "Notes",
     url: "",
   });
+  const [attachedFiles, setAttachedFiles] = useState([]);
 
   const load = async () => {
     try {
@@ -48,7 +50,7 @@ export default function StudyMaterialsPage() {
     load();
   }, []);
 
-  const resetForm = () =>
+  const resetForm = () => {
     setForm({
       course: "",
       title: "",
@@ -56,6 +58,8 @@ export default function StudyMaterialsPage() {
       type: "Notes",
       url: "",
     });
+    setAttachedFiles([]);
+  };
 
   const onCreate = () => {
     resetForm();
@@ -73,6 +77,7 @@ export default function StudyMaterialsPage() {
       type: row.type || "Notes",
       url: row.url || "",
     });
+    setAttachedFiles([]);
     setErrors({});
     setOpen(true);
   };
@@ -116,10 +121,20 @@ export default function StudyMaterialsPage() {
 
     try {
       setErrors({});
+      const encodeFile = (file) =>
+        new Promise((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = () =>
+            res({ name: file.name, size: file.size, type: file.type, data: reader.result });
+          reader.onerror = rej;
+          reader.readAsDataURL(file);
+        });
+      const encodedFiles = await Promise.all(attachedFiles.map(encodeFile));
+      const payload = { ...form, attachments: encodedFiles };
       if (editing) {
-        await api.put(`/materials/${editing._id}`, form);
+        await api.put(`/materials/${editing._id}`, payload);
       } else {
-        await api.post("/materials", form);
+        await api.post("/materials", payload);
       }
       setOpen(false);
       load();
@@ -182,22 +197,16 @@ export default function StudyMaterialsPage() {
 
   return (
     <div className="text-white">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-white sm:text-3xl">
-            Study Materials
-          </h2>
-          <p className="mt-1 text-sm text-slate-300">
-            Access course notes, slides, videos, and links
-          </p>
+      {isAdmin && (
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={onCreate}
+            className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-blue-500 hover:to-indigo-400 text-white font-semibold tracking-wide text-sm uppercase transition-all duration-200 shadow-xl"
+          >
+            + Add Material
+          </button>
         </div>
-
-        {isAdmin && (
-          <Button onClick={onCreate} className="rounded-2xl">
-            Add Material
-          </Button>
-        )}
-      </div>
+      )}
 
       <div className="mb-5 rounded-[28px] border border-white/10 bg-white/5 p-5 shadow-xl backdrop-blur-md">
         <div className="grid gap-4 md:grid-cols-2">
@@ -404,6 +413,17 @@ export default function StudyMaterialsPage() {
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
               }
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <FileDropZone
+              label="Upload Files (optional)"
+              files={attachedFiles}
+              onChange={setAttachedFiles}
+              accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.txt,video/*,image/*"
+              multiple
+              maxSizeMB={25}
             />
           </div>
         </div>

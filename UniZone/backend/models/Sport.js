@@ -13,6 +13,16 @@ const sportSchema = new mongoose.Schema({
     min: 1,
     default: 30
   },
+  teamSizeCategory: {
+    type: String,
+    enum: ['', 'Individual', 'Duo', 'Small Team', 'Medium Team', 'Large Team'],
+    default: ''
+  },
+  status: {
+    type: String,
+    enum: ['Active', 'Inactive'],
+    default: 'Active'
+  },
   description: {
     type: String,
     trim: true
