@@ -479,6 +479,16 @@ export default function Sports() {
             </Button>
           {isStaff && (
             <Button
+              onClick={() => navigate('/admin/sports/rosters')}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/40 border-none !px-6 !py-3 rounded-2xl transform active:scale-95 transition-all"
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-lg">📋</span> View Roster
+              </span>
+            </Button>
+          )}
+          {isStaff && (
+            <Button
               onClick={onCreate}
               className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/40 border-none !px-6 !py-3 rounded-2xl transform active:scale-95 transition-all"
             >

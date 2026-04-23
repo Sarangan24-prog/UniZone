@@ -4,7 +4,7 @@ require("dotenv").config();
 const connectDB = require("./config/database");
 
 // Environment variable validation
-const requiredEnvVars = ["MONGODB_URI", "JWT_SECRET", "ROLE_CREATE_KEY"];
+const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "ROLE_CREATE_KEY"];
 requiredEnvVars.forEach((envVar) => {
   if (!process.env[envVar]) {
     console.warn(`⚠️ Warning: Missing environment variable ${envVar}. Some features may fail.`);
@@ -25,6 +25,7 @@ const attendanceRoutes = require("./routes/course/attendanceRoutes");
 const userRoutes = require('./routes/userRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 const path = require("path");
 const fs = require("fs");
@@ -60,6 +61,7 @@ app.use("/api/attendance", attendanceRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Test route to verify server registration
 app.get('/api/test-users', (req, res) => res.json({ message: "User routes are accessible" }));
