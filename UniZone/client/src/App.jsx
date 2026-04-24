@@ -21,11 +21,16 @@ import AdminRequests from "./pages/AdminRequests";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    return !localStorage.getItem("splash-seen");
+  });
 
-if (loading) {
-  return <Splash onFinish={() => setLoading(false)} />;
-}
+  if (loading) {
+    return <Splash onFinish={() => {
+      localStorage.setItem("splash-seen", "true");
+      setLoading(false);
+    }} />;
+  }
   return (
     <AuthProvider>
       <BrowserRouter>
@@ -36,23 +41,19 @@ if (loading) {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
 
-              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/courses" element={<ProtectedRoute><CourseManagement /></ProtectedRoute>} />
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/courses" element={<CourseManagement />} />
               
-              <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
-              <Route path="/sports" element={<ProtectedRoute><Sports /></ProtectedRoute>} />
-              <Route path="/sports/equipment" element={<ProtectedRoute><Equipment /></ProtectedRoute>} />
-              <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/events" element={<Events />} />
+              <Route path="/sports" element={<Sports />} />
+              <Route path="/sports/equipment" element={<Equipment />} />
+              <Route path="/services" element={<Services />} />
+              <Route path="/profile" element={<Profile />} />
 
               <Route
                 path="/admin/requests"
                 element={
-                  <ProtectedRoute>
-                    <RoleRoute roles={["admin", "staff"]}>
-                      <AdminRequests />
-                    </RoleRoute>
-                  </ProtectedRoute>
+                  <AdminRequests />
                 }
               />
 
