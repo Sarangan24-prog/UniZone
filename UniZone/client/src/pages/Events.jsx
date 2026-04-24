@@ -1,4 +1,4 @@
- import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../api/client";
 import Button from "../components/Button";
 import Input from "../components/Input";
@@ -38,7 +38,13 @@ export default function Events() {
   const [editing, setEditing] = useState(null);
   const [err, setErr] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
-  const [form, setForm] = useState({ title: "", location: "", dateTime: "", capacity: 100, description: "" });
+  const [form, setForm] = useState({
+    title: "",
+    location: "",
+    dateTime: "",
+    capacity: 100,
+    description: "",
+  });
 
   // Ticket states - using real API
   const [tickets, setTickets] = useState([]);
@@ -50,10 +56,10 @@ export default function Events() {
   const [showRegSuccess, setShowRegSuccess] = useState(false);
   const [ticketLoading, setTicketLoading] = useState(false);
 
-  // Countdown timer tick
   const [tick, setTick] = useState(0);
+
   useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 1000);
+    const timer = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -105,7 +111,7 @@ export default function Events() {
       location: row.location || "",
       dateTime: row.dateTime ? new Date(row.dateTime).toISOString().slice(0, 16) : "",
       capacity: row.capacity || 100,
-      description: row.description || ""
+      description: row.description || "",
     });
     setErr("");
     setFieldErrors({});
@@ -117,8 +123,11 @@ export default function Events() {
       setErr("");
       setFieldErrors({});
       const payload = { ...form, dateTime: new Date(form.dateTime) };
-      if (editing) await api.put(`/events/${editing._id}`, payload);
-      else await api.post("/events", payload);
+      if (editing) {
+        await api.put(`/events/${editing._id}`, payload);
+      } else {
+        await api.post("/events", payload);
+      }
       alert("Event saved successfully");
       setOpen(false);
       load();
@@ -192,7 +201,8 @@ export default function Events() {
       setTicketOpen(false);
       alert("🎟️ Ticket raised successfully! Admin will confirm soon.");
     } catch (e) {
-      alert("Failed to raise ticket. Please try again.");
+      const message = e.response?.data?.message || "Failed to raise ticket. Please try again.";
+      alert(message);
     } finally {
       setTicketLoading(false);
     }
@@ -204,8 +214,8 @@ export default function Events() {
       loadTickets();
       alert("✅ Ticket confirmed! Email sent to student.");
     } catch (e) {
-       const message = e.response?.data?.message || "Failed to raise ticket. Please try again.";
-  alert(message);
+      const message = e.response?.data?.message || "Failed to confirm ticket.";
+      alert(message);
     }
   };
 
@@ -291,7 +301,6 @@ export default function Events() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0f2c] via-[#0d1b4b] to-[#1a0a3c] text-white">
 
-      {/* Registration Success Banner */}
       {showRegSuccess && (
         <div className="mx-8 mt-4 rounded-2xl bg-green-500 bg-opacity-20 border border-green-400 border-opacity-40 p-4 flex items-center gap-3">
           <span className="text-2xl">🎉</span>
@@ -302,7 +311,6 @@ export default function Events() {
         </div>
       )}
 
-      {/* Header */}
       <div className="px-8 pt-10 pb-6 flex items-start justify-between">
         <div>
           <h1 className="text-5xl font-extrabold text-white tracking-tight">Event Management</h1>
@@ -333,7 +341,6 @@ export default function Events() {
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="px-8 grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <div className="rounded-2xl border border-white border-opacity-10 bg-white bg-opacity-5 p-5 text-center backdrop-blur">
           <p className="text-3xl font-bold text-white">{items.length}</p>
@@ -355,10 +362,7 @@ export default function Events() {
         </div>
       </div>
 
-      {/* Main Layout */}
       <div className="px-8 pb-10 flex gap-6">
-
-        {/* Side Navigator */}
         <div className="w-56 flex-shrink-0">
           <div className="rounded-2xl bg-white bg-opacity-5 border border-white border-opacity-10 p-4 backdrop-blur">
             <p className="text-xs font-bold text-blue-300 tracking-widest mb-4 uppercase">Event Navigator</p>
@@ -381,10 +385,7 @@ export default function Events() {
           </div>
         </div>
 
-        {/* Content Area */}
         <div className="flex-1">
-
-          {/* All Events */}
           {activeNav === "all" && (
             <div className="rounded-2xl bg-white bg-opacity-5 border border-white border-opacity-10 p-6 backdrop-blur">
               <h2 className="text-xl font-bold text-white mb-4">All Events</h2>
@@ -412,7 +413,6 @@ export default function Events() {
             </div>
           )}
 
-          {/* My Registrations */}
           {activeNav === "my" && isStudent && (
             <div className="rounded-2xl bg-white bg-opacity-5 border border-white border-opacity-10 p-6 backdrop-blur">
               <h2 className="text-xl font-bold text-white mb-4">My Registrations</h2>
@@ -424,7 +424,6 @@ export default function Events() {
             </div>
           )}
 
-          {/* Event Statistics */}
           {activeNav === "stats" && (
             <div className="rounded-2xl bg-white bg-opacity-5 border border-white border-opacity-10 p-6 backdrop-blur">
               <h2 className="text-xl font-bold text-white mb-6">Event Statistics</h2>
@@ -488,19 +487,19 @@ export default function Events() {
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Input label="Title" value={form.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); setFieldErrors((prev) => ({ ...prev, title: "" })); }} />
+            <Input label="Title" value={form.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); setFieldErrors(p => ({ ...p, title: "" })); }} />
             {fieldErrors.title && <p className="text-red-500 text-sm mt-1">{fieldErrors.title}</p>}
           </div>
           <div>
-            <Input label="Location" value={form.location} onChange={(e) => { setForm({ ...form, location: e.target.value }); setFieldErrors((prev) => ({ ...prev, location: "" })); }} />
+            <Input label="Location" value={form.location} onChange={(e) => { setForm({ ...form, location: e.target.value }); setFieldErrors(p => ({ ...p, location: "" })); }} />
             {fieldErrors.location && <p className="text-red-500 text-sm mt-1">{fieldErrors.location}</p>}
           </div>
           <div>
-            <Input label="Date & Time" type="datetime-local" value={form.dateTime} onChange={(e) => { setForm({ ...form, dateTime: e.target.value }); setFieldErrors((prev) => ({ ...prev, dateTime: "" })); }} />
+            <Input label="Date & Time" type="datetime-local" value={form.dateTime} onChange={(e) => { setForm({ ...form, dateTime: e.target.value }); setFieldErrors(p => ({ ...p, dateTime: "" })); }} />
             {fieldErrors.dateTime && <p className="text-red-500 text-sm mt-1">{fieldErrors.dateTime}</p>}
           </div>
           <div>
-            <Input label="Capacity" type="number" value={form.capacity} onChange={(e) => { setForm({ ...form, capacity: +e.target.value }); setFieldErrors((prev) => ({ ...prev, capacity: "" })); }} />
+            <Input label="Capacity" type="number" value={form.capacity} onChange={(e) => { setForm({ ...form, capacity: +e.target.value }); setFieldErrors(p => ({ ...p, capacity: "" })); }} />
             {fieldErrors.capacity && <p className="text-red-500 text-sm mt-1">{fieldErrors.capacity}</p>}
           </div>
           <div className="sm:col-span-2">
@@ -509,7 +508,7 @@ export default function Events() {
         </div>
       </Modal>
 
-      {/* Raise Ticket Modal - Student */}
+      {/* Raise Ticket Modal */}
       <Modal
         open={ticketOpen}
         title="🎟️ Raise Event Ticket"
@@ -551,7 +550,6 @@ export default function Events() {
           </div>
         )}
       >
-        {/* ✅ Added max height and scroll */}
         <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
           {tickets.length === 0 ? (
             <p className="text-center text-gray-400 py-6">No ticket requests yet.</p>
