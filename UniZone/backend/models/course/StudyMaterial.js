@@ -24,6 +24,12 @@ const studyMaterialSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  attachments: [{
+    name: String,
+    size: Number,
+    type: { type: String },
+    data: String,
+  }],
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

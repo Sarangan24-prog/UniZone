@@ -30,6 +30,7 @@ export default function AttendancePage() {
   const [sessionMessage, setSessionMessage] = useState("");
   const [sessionError, setSessionError] = useState("");
   const [dateError, setDateError] = useState("");
+  const [generatedSessionData, setGeneratedSessionData] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -75,6 +76,22 @@ export default function AttendancePage() {
     load();
   }, []);
 
+  // Add polling for active sessions
+  useEffect(() => {
+    let interval;
+    if (isAdmin && activeSessions.length > 0) {
+      interval = setInterval(async () => {
+        try {
+          const res = await api.get("/attendance/sessions/active");
+          setActiveSessions(res.data);
+        } catch (e) {
+          console.error("Failed to poll sessions:", e);
+        }
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [isAdmin, activeSessions.length]);
+
   const generateQR = async () => {
     let hasError = false;
     if (!sessionCourse) {
@@ -104,16 +121,23 @@ export default function AttendancePage() {
       date: sessionDate,
     };
 
+    const browserHost = window.location.hostname;
+    const localIp = (browserHost !== "localhost" && browserHost !== "127.0.0.1") ? browserHost : serverIp;
+
     try {
       await api.post("/attendance/sessions", sessionData);
-      const url = `http://${serverIp}:5174/attendance/scan?sessionData=${encodeURIComponent(JSON.stringify(sessionData))}`;
+      const url = `http://${localIp}:5174/attendance/scan?sessionData=${encodeURIComponent(JSON.stringify(sessionData))}`;
       setQrValue(url);
+      setGeneratedSessionData(sessionData);
       setSessionMessage("Attendance session started and QR generated successfully.");
       load(); // Refresh active sessions
     } catch (err) {
       setSessionError(err.response?.data?.message || "Failed to start session.");
     }
   };
+
+  // Set of sessionIds the student has already marked attendance for
+  const markedSessionIds = new Set(items.map((i) => i.sessionId).filter(Boolean));
 
   const endSession = async (id) => {
     try {
@@ -126,6 +150,7 @@ export default function AttendancePage() {
 
   const clearQR = () => {
     setQrValue("");
+    setGeneratedSessionData(null);
     setSessionMessage("");
     setSessionCourse("");
     setSessionDate(new Date().toISOString().split("T")[0]);
@@ -202,31 +227,10 @@ export default function AttendancePage() {
           </p>
         </div>
 
-        {!isAdmin && (
-          <Button onClick={() => navigate("/attendance/scan")}>Scan QR</Button>
-        )}
+
       </div>
 
-      {!isAdmin && stats && (
-        <div className="grid gap-4 sm:grid-cols-4 mb-6">
-          <div className="rounded-2xl border border-white/10 glass shadow-sm p-5 text-center">
-            <p className="text-3xl font-bold text-white">{stats.percentage}%</p>
-            <p className="text-xs font-semibold text-slate-400 mt-1 uppercase">Overall</p>
-          </div>
-          <div className="rounded-2xl border border-green-100 bg-green-500/20 shadow-sm p-5 text-center">
-            <p className="text-3xl font-bold text-green-300">{stats.present}</p>
-            <p className="text-xs font-semibold text-green-400 mt-1 uppercase">Present</p>
-          </div>
-          <div className="rounded-2xl border border-amber-100 bg-amber-500/20 shadow-sm p-5 text-center">
-            <p className="text-3xl font-bold text-amber-300">{stats.late}</p>
-            <p className="text-xs font-semibold text-amber-400 mt-1 uppercase">Late</p>
-          </div>
-          <div className="rounded-2xl border border-red-100 bg-red-500/20 shadow-sm p-5 text-center">
-            <p className="text-3xl font-bold text-red-300">{stats.absent}</p>
-            <p className="text-xs font-semibold text-red-400 mt-1 uppercase">Absent</p>
-          </div>
-        </div>
-      )}
+
 
       {activeSessions.length > 0 && (
         <div className="mb-8">
@@ -239,22 +243,28 @@ export default function AttendancePage() {
           </h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {activeSessions.map((session) => (
-              <Card key={session._id} glass className="border-green-500/20">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="bg-green-500/10 text-green-400 text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-green-500/20">
+              <Card key={session._id} glass className="border-green-500/20 relative">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="bg-green-500/10 text-green-400 text-[10px] uppercase font-black tracking-widest px-2.5 py-1 rounded border border-green-500/20">
                     Live Now
                   </div>
-                  <span className="text-[10px] text-slate-500 font-mono">{session.sessionId}</span>
+                  {isAdmin && (
+                    <div className="bg-blue-500/20 text-blue-300 text-[11px] font-bold px-3 py-1 rounded-full border border-blue-500/30 flex items-center gap-1.5 shadow-lg shadow-blue-500/10">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></div>
+                      {session.attendeeCount || 0} Checked In
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex flex-col items-center mb-4">
-                  <h4 className="text-white font-bold text-center">{session.course?.code}</h4>
+                  <span className="text-[10px] text-slate-500 font-mono absolute top-4 left-1/2 -translate-x-1/2 opacity-50">{session.sessionId}</span>
+                  <h4 className="text-white font-bold text-center mt-2">{session.course?.code}</h4>
                   <p className="text-xs text-slate-300 text-center mb-3">{session.course?.title}</p>
                   
                   {!isAdmin && (
                     <div className="p-2 bg-white rounded-lg shadow-inner mb-2">
                       <QRCode 
-                        value={`http://${serverIp}:5174/attendance/scan?sessionData=${encodeURIComponent(JSON.stringify({
+                        value={`http://${window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1" ? window.location.hostname : serverIp}:5174/attendance/scan?sessionData=${encodeURIComponent(JSON.stringify({
                           sessionId: session.sessionId,
                           courseId: session.course?._id,
                           courseCode: session.course?.code,
@@ -278,15 +288,12 @@ export default function AttendancePage() {
                     >
                       End Session
                     </Button>
-                  ) : (
-                    <Button 
-                      size="sm" 
-                      className="!py-1.5 !px-3 !text-[10px]"
-                      onClick={() => navigate("/attendance/scan")}
-                    >
-                      Use Scanner
-                    </Button>
-                  )}
+                  ) : markedSessionIds.has(session.sessionId) ? (
+                    <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-black">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                      Marked Present
+                    </div>
+                  ) : null}
                 </div>
               </Card>
             ))}
@@ -365,9 +372,11 @@ export default function AttendancePage() {
                   </p>
                 )}
 
-                <p className="mt-1 text-sm text-slate-300 font-mono">
-                  Session ID: {JSON.parse(qrValue).sessionId}
-                </p>
+                {generatedSessionData && (
+                  <p className="mt-1 text-sm text-slate-300 font-mono">
+                    Session ID: {generatedSessionData.sessionId}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -378,7 +387,7 @@ export default function AttendancePage() {
       {items.length > 0 && (
          <div className="mt-8">
             <h3 className="text-lg font-semibold text-white mb-4">Attendance History</h3>
-            <Table columns={columns} data={items} />
+            <Table columns={columns} rows={items} />
          </div>
       )}
 

@@ -9,7 +9,7 @@ const attendanceSchema = new mongoose.Schema({
   student: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Student is required']
+    required: false
   },
   date: {
     type: Date,
@@ -31,12 +31,15 @@ const attendanceSchema = new mongoose.Schema({
   studentName: {
     type: String,
     required: [true, 'Student name is required']
+  },
+  sessionId: {
+    type: String
   }
 }, {
   timestamps: true
 });
 
-// Compound index to prevent duplicate attendance entries
-attendanceSchema.index({ course: 1, student: 1, date: 1 }, { unique: true });
+// Compound index to prevent duplicate attendance entries using regNo instead of student id
+attendanceSchema.index({ course: 1, regNo: 1, date: 1 }, { unique: true });
 
 module.exports = mongoose.model('Attendance', attendanceSchema);

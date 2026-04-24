@@ -57,7 +57,7 @@ if (loading) {
                 }
               />
 
-              <Route path="/attendance/scan" element={<ProtectedRoute><StudentAttendanceScan /></ProtectedRoute>} />
+              <Route path="/attendance/scan" element={<StudentAttendanceScan />} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
