@@ -67,15 +67,19 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     // Find user and include password for comparison
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password');
     if (!user) {
+      console.log(`🔍 Login failed: User not found for ${normalizedEmail}`);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      console.log(`🔍 Login failed: Password mismatch for ${normalizedEmail}`);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
