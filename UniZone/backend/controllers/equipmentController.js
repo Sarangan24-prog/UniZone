@@ -1,5 +1,7 @@
 const Equipment = require('../models/Equipment');
 const EquipmentBooking = require('../models/EquipmentBooking');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 // --- Equipment Management (Admin) ---
 
@@ -125,6 +127,23 @@ exports.createBooking = async (req, res) => {
       notes,
       status: 'Pending'
     });
+
+    // Create notifications for all admin/staff
+    try {
+      const admins = await User.find({ role: { $in: ['admin', 'staff'] } });
+      const notificationPromises = admins.map(admin => {
+        return Notification.create({
+          recipient: admin._id,
+          sender: req.user._id,
+          type: 'EquipmentBooking',
+          message: `${req.user.name} requested ${quantity}x ${equipment.name}`,
+          relatedId: newBooking._id
+        });
+      });
+      await Promise.all(notificationPromises);
+    } catch (notifyError) {
+      console.error('Failed to create booking notifications:', notifyError);
+    }
 
     res.status(201).json(newBooking);
   } catch (error) {
