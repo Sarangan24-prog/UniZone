@@ -189,13 +189,29 @@ exports.getAllLostFoundItems = asyncHandler(async (req, res) => {
   res.json(items);
 });
 exports.updateLostFoundItemStatus = asyncHandler(async (req, res) => {
+  const isPrivilegedUser = ['admin', 'staff'].includes(req.user?.role);
+  const nextStatus = req.body?.status;
+
+  if (!nextStatus) {
+    return res.status(400).json({ message: 'Status is required' });
+  }
+
+  if (!isPrivilegedUser && nextStatus !== 'resolved') {
+    return res.status(403).json({ message: 'Students can only mark their own items as resolved' });
+  }
+
+  const query = isPrivilegedUser
+    ? { _id: req.params.id }
+    : { _id: req.params.id, userId: req.user._id };
+
   const item = await LostFoundItem.findOneAndUpdate(
-    { _id: req.params.id, $or: [{ userId: req.user._id }, { userId: { $exists: true } }] }, // Authorize logic should ideally be in route or controller 
-    req.body, 
+    query,
+    { status: nextStatus },
     { new: true, runValidators: true }
   ).populate('userId', 'name email');
+
   if (!item) return res.status(404).json({ message: 'Item not found' });
-  if (['admin', 'staff'].includes(req.user?.role)) {
+  if (isPrivilegedUser) {
     try {
       await notifyStudentOfServiceStatusUpdate({
         serviceType: 'Lost & Found',

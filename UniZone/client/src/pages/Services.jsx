@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import PageShell from "../components/PageShell";
 import Card from "../components/Card";
 import Select from "../components/Select";
@@ -24,6 +26,7 @@ const ENDPOINTS = ['hostel', 'idcard', 'certificate', 'complaint', 'lostfound', 
 export default function Services() {
   const { user } = useAuth();
   const isStudent = user?.role === "student";
+  const canGenerateReports = user?.role === "admin" || user?.role === "staff";
 
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -31,6 +34,7 @@ export default function Services() {
   const [categories, setCategories] = useState([]);
   const [submitErr, setSubmitErr] = useState("");
   const [errors, setErrors] = useState({});
+  const [reportBusy, setReportBusy] = useState(false);
 
   const [hostelForm, setHostelForm] = useState({ roomType: "Single", duration: 1 });
   const [idCardForm, setIdCardForm] = useState({ 
@@ -199,6 +203,199 @@ export default function Services() {
 
   const clearErr = (field) => {
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
+  };
+
+  const getCurrentReportRows = () => {
+    if (activeTab === 5 && !isStudent) {
+      return categories.map((category) => ({
+        Name: category.name || "-",
+        Description: category.description || "No description provided",
+        Status: category.isActive ? "Active" : "Inactive",
+      }));
+    }
+
+    return items.map((item) => {
+      switch (activeTab) {
+        case 0:
+          return {
+            Type: "Hostel",
+            Room: item.roomType || "-",
+            Duration: item.duration ? `${item.duration} semester(s)` : "-",
+            Status: item.status || "-",
+            Student: item.userId?.name || user?.name || "-",
+            Created: item.createdAt ? new Date(item.createdAt).toLocaleString() : "-",
+          };
+        case 1:
+          return {
+            Type: "ID Card",
+            Reason: item.reason || "-",
+            Name: item.fullName || "-",
+            StudentId: item.studentId || "-",
+            Status: item.status || "-",
+            Created: item.createdAt ? new Date(item.createdAt).toLocaleString() : "-",
+          };
+        case 2:
+          return {
+            Type: "Certificate",
+            Certificate: item.type || "-",
+            Description: item.description || "-",
+            Status: item.status || "-",
+            Created: item.createdAt ? new Date(item.createdAt).toLocaleString() : "-",
+          };
+        case 3:
+          return {
+            Type: "Complaint",
+            Subject: item.subject || "-",
+            Description: item.description || "-",
+            Status: item.status || "-",
+            Student: item.userId?.name || user?.name || "-",
+            Created: item.createdAt ? new Date(item.createdAt).toLocaleString() : "-",
+          };
+        case 4:
+          return {
+            Type: item.type || "Lost & Found",
+            Item: item.itemName || "-",
+            Location: item.location || "-",
+            Date: item.date ? new Date(item.date).toLocaleDateString() : "-",
+            Contact: item.contactInfo || "-",
+            Status: item.status || "-",
+            Owner: item.userId?.name || "-",
+          };
+        case 5:
+          return {
+            Category: item.category || "-",
+            Description: item.description || "-",
+            Status: item.status || "-",
+            Student: item.userId?.name || user?.name || "-",
+            Created: item.createdAt ? new Date(item.createdAt).toLocaleString() : "-",
+          };
+        default:
+          return {};
+      }
+    });
+  };
+
+  const getCurrentReportName = () => {
+    if (activeTab === 5 && !isStudent) return "service-categories";
+    return TABS.find((tab) => tab.id === activeTab)?.label.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "services";
+  };
+
+  const downloadBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!canGenerateReports) {
+      setSubmitErr("Report generation is available only for admin and staff users.");
+      return;
+    }
+
+    const rows = getCurrentReportRows();
+    if (rows.length === 0) {
+      setSubmitErr("No data available for report generation.");
+      return;
+    }
+
+    setReportBusy(true);
+    try {
+      const doc = new jsPDF({ orientation: "landscape" });
+      const title = `${TABS.find((tab) => tab.id === activeTab)?.label || "Services"} Report`;
+      const subtitle = activeTab === 5 && !isStudent ? "Available Categories" : isStudent ? "Student View" : "Staff/Admin View";
+
+      doc.setFontSize(18);
+      doc.text(title, 14, 18);
+      doc.setFontSize(10);
+      doc.text(`${subtitle} • Generated ${new Date().toLocaleString()}`, 14, 26);
+
+      const columns = Object.keys(rows[0]);
+      autoTable(doc, {
+        startY: 34,
+        head: [columns],
+        body: rows.map((row) => columns.map((column) => row[column] ?? "-")),
+        styles: { fontSize: 8, cellPadding: 3 },
+        headStyles: { fillColor: [29, 78, 216] },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        margin: { left: 14, right: 14 },
+      });
+
+      doc.save(`${getCurrentReportName()}-report.pdf`);
+    } finally {
+      setReportBusy(false);
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    if (!canGenerateReports) {
+      setSubmitErr("Report generation is available only for admin and staff users.");
+      return;
+    }
+
+    const rows = getCurrentReportRows();
+    if (rows.length === 0) {
+      setSubmitErr("No data available for report generation.");
+      return;
+    }
+
+    setReportBusy(true);
+    try {
+      const columns = Object.keys(rows[0]);
+      const escapeHtml = (value) =>
+        String(value ?? "-")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+
+      const title = `${TABS.find((tab) => tab.id === activeTab)?.label || "Services"} Report`;
+      const generatedAt = new Date().toLocaleString();
+      const tableHead = columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
+      const tableBody = rows
+        .map(
+          (row) =>
+            `<tr>${columns
+              .map((column) => `<td>${escapeHtml(row[column])}</td>`)
+              .join("")}</tr>`
+        )
+        .join("");
+
+      const excelContent = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office"
+              xmlns:x="urn:schemas-microsoft-com:office:excel"
+              xmlns="http://www.w3.org/TR/REC-html40">
+          <head>
+            <meta charset="utf-8" />
+            <style>
+              table { border-collapse: collapse; width: 100%; }
+              th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
+              th { background: #1d4ed8; color: #ffffff; font-weight: 700; }
+              h2, p { font-family: Arial, sans-serif; }
+            </style>
+          </head>
+          <body>
+            <h2>${escapeHtml(title)}</h2>
+            <p>Generated ${escapeHtml(generatedAt)}</p>
+            <table>
+              <thead><tr>${tableHead}</tr></thead>
+              <tbody>${tableBody}</tbody>
+            </table>
+          </body>
+        </html>
+      `;
+
+      downloadBlob(
+        new Blob(["\uFEFF" + excelContent], { type: "application/vnd.ms-excel;charset=utf-8;" }),
+        `${getCurrentReportName()}-report.xls`
+      );
+    } finally {
+      setReportBusy(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -464,7 +661,7 @@ export default function Services() {
       }
     }
 
-    if (activeTab === 5 && categories.length === 0 && isStudent) return null;
+    const shouldShowActionButton = !(activeTab === 5 && categories.length === 0 && isStudent);
 
     return (
       <Card glass className="mb-8 border-blue-500/20 shadow-[0_0_20px_rgba(37,99,235,0.15)] ring-1 ring-white/10">
@@ -485,7 +682,11 @@ export default function Services() {
                 </p>
             </div>
         )}
-        <Button className="mt-6 font-bold tracking-wide" onClick={buttonAction}>{buttonLabel}</Button>
+        {shouldShowActionButton && (
+          <Button className="mt-6 font-bold tracking-wide" onClick={buttonAction}>
+            {buttonLabel}
+          </Button>
+        )}
       </Card>
     );
   };
@@ -669,13 +870,35 @@ export default function Services() {
             {renderForm()}
           </div>
           
-          <div className="mt-6 mb-6 flex items-center justify-between">
-            <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
-                {isStudent && activeTab !== 4 ? "My " : (activeTab === 5 && !isStudent ? "Available " : "All ")}
-                <span className="text-blue-400">{TABS.find(t => t.id === activeTab).label}</span> 
-                {activeTab === 4 ? "Items" : (activeTab === 5 && !isStudent ? "Categories" : "Requests")}
-            </h2>
-            <div className="h-px bg-gradient-to-r from-blue-500/50 to-transparent flex-1 ml-6"></div>
+          <div className="mt-6 mb-6 flex flex-col gap-4 xl:flex-row xl:items-center">
+            <div className="flex items-center justify-between gap-4 min-w-0 flex-1">
+              <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3 min-w-0">
+                  {isStudent && activeTab !== 4 ? "My " : (activeTab === 5 && !isStudent ? "Available " : "All ")}
+                  <span className="text-blue-400">{TABS.find(t => t.id === activeTab).label}</span> 
+                  {activeTab === 4 ? "Items" : (activeTab === 5 && !isStudent ? "Categories" : "Requests")}
+              </h2>
+              <div className="h-px bg-gradient-to-r from-blue-500/50 to-transparent flex-1 ml-2 hidden xl:block"></div>
+            </div>
+            {canGenerateReports && (
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="outline"
+                  className="border-white/10 text-slate-300 hover:text-white hover:bg-white/5"
+                  onClick={handleDownloadPdf}
+                  disabled={loading || reportBusy || getCurrentReportRows().length === 0}
+                >
+                  {reportBusy ? "Preparing..." : "Export PDF"}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-white/10 text-slate-300 hover:text-white hover:bg-white/5"
+                  onClick={handleDownloadExcel}
+                  disabled={loading || reportBusy || getCurrentReportRows().length === 0}
+                >
+                  {reportBusy ? "Preparing..." : "Export Excel"}
+                </Button>
+              </div>
+            )}
           </div>
           
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
