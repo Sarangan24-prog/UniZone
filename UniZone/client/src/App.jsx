@@ -18,15 +18,14 @@ import Equipment from "./pages/Equipment";
 import Services from "./pages/Services";
 import Profile from "./pages/Profile";
 import AdminRequests from "./pages/AdminRequests";
-import SportRosters from "./pages/SportRosters";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
   const [loading, setLoading] = useState(true);
 
-if (loading) {
-  return <Splash onFinish={() => setLoading(false)} />;
-}
+  if (loading) {
+    return <Splash onFinish={() => setLoading(false)} />;
+  }
   return (
     <AuthProvider>
       <BrowserRouter>
@@ -39,7 +38,7 @@ if (loading) {
 
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/courses" element={<ProtectedRoute><CourseManagement /></ProtectedRoute>} />
-              
+
               <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
               <Route path="/sports" element={<ProtectedRoute><Sports /></ProtectedRoute>} />
               <Route path="/sports/equipment" element={<ProtectedRoute><Equipment /></ProtectedRoute>} />
@@ -52,16 +51,6 @@ if (loading) {
                   <ProtectedRoute>
                     <RoleRoute roles={["admin", "staff"]}>
                       <AdminRequests />
-                    </RoleRoute>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/sports/rosters"
-                element={
-                  <ProtectedRoute>
-                    <RoleRoute roles={["admin", "staff"]}>
-                      <SportRosters />
                     </RoleRoute>
                   </ProtectedRoute>
                 }

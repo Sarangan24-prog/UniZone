@@ -4,8 +4,10 @@ require("dotenv").config();
 const connectDB = require("./config/database");
 
 // Environment variable validation
-const requiredEnvVars = ["MONGO_URI", "JWT_SECRET", "ROLE_CREATE_KEY"];
-requiredEnvVars.forEach((envVar) => {
+if (!process.env.MONGO_URI && !process.env.MONGODB_URI) {
+  console.warn("⚠️ Warning: Missing MONGO_URI/MONGODB_URI. Some features may fail.");
+}
+["JWT_SECRET", "ROLE_CREATE_KEY"].forEach((envVar) => {
   if (!process.env[envVar]) {
     console.warn(`⚠️ Warning: Missing environment variable ${envVar}. Some features may fail.`);
   }
