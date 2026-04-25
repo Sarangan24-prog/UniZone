@@ -81,12 +81,24 @@ async function mockApi(page: Page, state: MockState, counters: Counters) {
     const path = url.pathname;
     const method = req.method();
 
+    // Only mock real backend API calls. Frontend source files such as
+    // /src/api/client.js also match "**/api/**" and must be allowed through.
+    if (!path.startsWith("/api/")) {
+      await route.fallback();
+      return;
+    }
+
     const json = async (data: any, status = 200) =>
       route.fulfill({
         status,
         contentType: "application/json",
         body: JSON.stringify(data),
       });
+
+    // Notifications used by staff/admin top bar.
+    if (path.endsWith("/api/notifications") && method === "GET") return json([]);
+    if (path.endsWith("/api/notifications/read-all") && method === "PUT") return json({ ok: true });
+    if (/\/api\/notifications\/[^/]+\/read$/.test(path) && method === "PUT") return json({ ok: true });
 
     // Categories
     if (path.endsWith("/api/categories") && method === "GET") return json(state.categories);
@@ -167,9 +179,9 @@ async function mockApi(page: Page, state: MockState, counters: Counters) {
     }
 
     // Generic services
-    if (path.endsWith("/api/services/mine") && method === "GET") return json(state.genericMine);
-    if (path.endsWith("/api/services") && method === "GET") return json(state.genericAll);
-    if (path.endsWith("/api/services") && method === "POST") {
+    if (/\/api\/services\/mine\/?$/.test(path) && method === "GET") return json(state.genericMine);
+    if (/\/api\/services\/?$/.test(path) && method === "GET") return json(state.genericAll);
+    if (/\/api\/services\/?$/.test(path) && method === "POST") {
       counters.genericPost += 1;
       const body = req.postDataJSON?.() ?? {};
       const created = { _id: `g-${Date.now()}`, status: "open", createdAt: nowIso(), ...body };
@@ -177,7 +189,7 @@ async function mockApi(page: Page, state: MockState, counters: Counters) {
       state.genericAll.unshift({ ...created, userId: { _id: "u1", name: "Playwright User" } });
       return json(created, 201);
     }
-    if (/\/api\/services\/[^/]+$/.test(path) && method === "PUT") {
+    if (/\/api\/services\/[^/]+\/?$/.test(path) && method === "PUT") {
       counters.anyPut += 1;
       return json({ ok: true });
     }
@@ -193,18 +205,26 @@ async function mockApi(page: Page, state: MockState, counters: Counters) {
   });
 }
 
-async function openServices(page: Page) {
+async function openServices(page: Page, role: Role = "student") {
   await page.goto("/services");
 
-  // Wait for the splash screen to finish (it takes 1.8s)
-  // We wait for the "Services Management" title with a generous timeout.
-  // If we are redirected to /login, this will fail.
-  const title = page.getByText("Services Management");
+  // Wait for the shared navigator first, then branch to role-specific UI.
+  const navigator = page.getByText("Service Navigator");
+  const hostelTab = page.getByRole("button", { name: "🏢 Hostel" });
+  const generalServicesTab = page.getByRole("button", { name: /General Services/i });
+  const durationField = page.getByLabel("Duration (Semesters, 1-8)");
   try {
-    await expect(title).toBeVisible({ timeout: 15000 });
+    await expect(page).toHaveURL(/\/services$/, { timeout: 15000 });
+    await expect(navigator).toBeVisible({ timeout: 15000 });
+    if (role === "student") {
+      await expect(hostelTab).toBeVisible({ timeout: 15000 });
+      await expect(durationField).toBeVisible({ timeout: 15000 });
+    } else {
+      await expect(generalServicesTab).toBeVisible({ timeout: 15000 });
+    }
   } catch (e) {
     const url = page.url();
-    console.log(`Failed to see "Services Management". Current URL: ${url}`);
+    console.log(`Failed to open Services default form. Current URL: ${url}`);
     if (url.includes("/login")) {
       console.log("Redirected to /login. Auth failed?");
       const token = await page.evaluate(() => localStorage.getItem("token"));
@@ -221,7 +241,7 @@ test("1) Student can open Services page and see default Hostel tab", async ({ pa
   await mockApi(page, state, counters);
   await openServices(page);
 
-  await expect(page.getByRole("button", { name: /Hostel/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: "🏢 Hostel" })).toBeVisible();
   await expect(page.getByText(/File a New Hostel/i)).toBeVisible();
 });
 
@@ -353,7 +373,8 @@ test("9) General Services shows warning when no categories available", async ({ 
   await openServices(page);
 
   await page.getByRole("button", { name: /General Services/i }).click();
-  await expect(page.getByText(/No service categories available yet/i)).toBeVisible();
+  await expect(page.getByLabel("Service Category")).toHaveCount(0);
+  await expect(page.getByText(/No items found/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /Submit General Services Request/i })).toHaveCount(0);
 });
 
@@ -378,7 +399,7 @@ test("11) Staff can create service category from General Services tab", async ({
   const counters = defaultCounters();
   await setAuth(page, "staff");
   await mockApi(page, state, counters);
-  await openServices(page);
+  await openServices(page, "staff");
 
   await page.getByRole("button", { name: /General Services/i }).click();
   await expect(page.getByText(/Admin Configuration/i)).toBeVisible();
@@ -398,13 +419,13 @@ test("12) Staff can update Hostel request status", async ({ page }) => {
   const counters = defaultCounters();
   await setAuth(page, "staff");
   await mockApi(page, state, counters);
-  await openServices(page);
+  await openServices(page, "staff");
 
   await page.getByRole("button", { name: /Hostel/i }).click();
   const statusSelect = page.locator("select").filter({ has: page.locator("option[value='approved']") }).first();
   await statusSelect.selectOption("approved");
 
-  expect(counters.anyPut).toBeGreaterThan(0);
+  await expect.poll(() => counters.anyPut).toBeGreaterThan(0);
 });
 
 test("13) Student can mark own Lost & Found item as resolved", async ({ page }) => {
@@ -432,4 +453,40 @@ test("13) Student can mark own Lost & Found item as resolved", async ({ page }) 
   await page.getByRole("button", { name: /Mark as Resolved/i }).click();
 
   expect(counters.anyPut).toBeGreaterThan(0);
+});
+
+test("14) Student cannot see report export actions", async ({ page }) => {
+  const state = defaultState();
+  state.hostelMine = [
+    { _id: "h-student", roomType: "Single", duration: 1, status: "open", createdAt: nowIso() },
+  ];
+  const counters = defaultCounters();
+  await setAuth(page, "student");
+  await mockApi(page, state, counters);
+  await openServices(page);
+
+  await expect(page.getByRole("button", { name: /Export PDF/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Export Excel/i })).toHaveCount(0);
+});
+
+test("15) Staff can download PDF and Excel reports", async ({ page }) => {
+  const state = defaultState();
+  state.hostelAll = [
+    { _id: "h-report", roomType: "Double", duration: 2, status: "approved", createdAt: nowIso(), userId: { _id: "u2", name: "Student A" } },
+  ];
+  const counters = defaultCounters();
+  await setAuth(page, "staff");
+  await mockApi(page, state, counters);
+  await openServices(page, "staff");
+
+  await expect(page.getByRole("button", { name: /Export PDF/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Export Excel/i })).toBeVisible();
+
+  const pdfDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: /Export PDF/i }).click();
+  expect((await pdfDownload).suggestedFilename()).toMatch(/hostel-report\.pdf/i);
+
+  const excelDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: /Export Excel/i }).click();
+  expect((await excelDownload).suggestedFilename()).toMatch(/hostel-report\.xls/i);
 });
