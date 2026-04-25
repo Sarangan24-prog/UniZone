@@ -24,6 +24,12 @@ const assignmentSchema = new mongoose.Schema({
     required: [true, 'Total marks is required'],
     min: 1
   },
+  attachments: [{
+    name: String,
+    size: Number,
+    type: { type: String },
+    data: String,
+  }],
   status: {
     type: String,
     enum: ['Active', 'Closed'],

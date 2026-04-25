@@ -77,7 +77,7 @@ export default function StudyMaterialsPage() {
       type: row.type || "Notes",
       url: row.url || "",
     });
-    setAttachedFiles([]);
+    setAttachedFiles(row.attachments || []);
     setErrors({});
     setOpen(true);
   };
@@ -311,6 +311,19 @@ export default function StudyMaterialsPage() {
                       >
                         🔗 Open Resource
                       </a>
+                    )}
+
+                    {m.attachments && m.attachments.length > 0 && (
+                      <div className="mb-4 space-y-2">
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Attachments</p>
+                        <div className="flex flex-col gap-2">
+                          {m.attachments.map((att, i) => (
+                            <a key={i} href={att.data} download={att.name} className="flex items-center gap-2 text-sm text-blue-400 bg-blue-500/10 p-2 rounded-lg hover:bg-blue-500/20 transition">
+                              📎 <span className="truncate">{att.name}</span>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
                     )}
 
                     {isAdmin && (

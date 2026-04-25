@@ -18,6 +18,7 @@ import Equipment from "./pages/Equipment";
 import Services from "./pages/Services";
 import Profile from "./pages/Profile";
 import AdminRequests from "./pages/AdminRequests";
+import StudentAttendanceScan from "./pages/course/StudentAttendanceScan";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
@@ -55,6 +56,8 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+
+              <Route path="/attendance/scan" element={<StudentAttendanceScan />} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
