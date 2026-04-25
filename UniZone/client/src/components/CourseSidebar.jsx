@@ -9,31 +9,29 @@ export default function CourseSidebar({ activeTab, onTabChange }) {
   ];
 
   return (
-    <div className="h-full">
-      <div className="bg-slate-900/40 rounded-[20px] overflow-hidden border border-white/10 shadow-2xl backdrop-blur-md sticky top-6">
-        <div className="bg-[#1c2331] text-white py-5 px-6 font-black tracking-widest text-[11px] uppercase border-b border-white/5 shadow-inner">
-          Course Management
+    <aside className="w-full lg:w-64 shrink-0">
+      <nav className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-900 to-gray-800">
+          <h2 className="text-sm font-bold text-white tracking-wide uppercase">Course Management</h2>
         </div>
-        <div className="p-3 space-y-1.5 bg-black/20">
-          {tabs.map(({ id, label, icon }) => {
-            const isActive = activeTab === id;
-            return (
+        <ul className="p-2">
+          {tabs.map((tab) => (
+            <li key={tab.id}>
               <button
-                key={id}
-                onClick={() => onTabChange(id)}
+                onClick={() => onTabChange(tab.id)}
                 className={`w-full text-left flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 font-bold text-sm ${
-                  isActive
+                  activeTab === tab.id
                     ? 'bg-[#1c2331] text-white shadow-lg ring-1 ring-white/10 scale-[1.02]'
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                <span className="text-[20px] filter drop-shadow-md">{icon}</span>
-                <span>{label}</span>
+                <span className="text-[20px] filter drop-shadow-md">{tab.icon}</span>
+                <span>{tab.label}</span>
               </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </aside>
   );
 }

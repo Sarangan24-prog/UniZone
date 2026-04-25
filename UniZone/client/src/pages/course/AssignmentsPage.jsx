@@ -189,22 +189,16 @@ export default function AssignmentsPage() {
 
   return (
     <div className="text-white">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-white sm:text-3xl">
-            Assignments
-          </h2>
-          <p className="mt-1 text-sm text-slate-300">
-            Track and manage course assignments
-          </p>
+      {isAdmin && (
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={onCreate}
+            className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-blue-500 hover:to-indigo-400 text-white font-semibold tracking-wide text-sm uppercase transition-all duration-200 shadow-xl"
+          >
+            + New Assignment
+          </button>
         </div>
-
-        {isAdmin && (
-          <Button onClick={onCreate} className="rounded-2xl">
-            New Assignment
-          </Button>
-        )}
-      </div>
+      )}
 
       <div className="mb-5 rounded-[28px] border border-white/10 bg-white/5 p-5 shadow-xl backdrop-blur-md">
         <div className="grid gap-4 md:grid-cols-2">

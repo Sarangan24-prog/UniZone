@@ -53,16 +53,34 @@ export default function Equipment() {
         api.get("/equipment"),
         user ? api.get(isAdminOrStaff ? "/equipment/bookings" : "/equipment/bookings/my") : Promise.resolve({ data: [] })
       ]);
-      setEquipmentList(eqRes.data);
-      setBookings(bkRes.data);
+      console.log("📦 Equipment loaded:", eqRes.data);
+      console.log("User role:", user?.role);
+      setEquipmentList(eqRes.data || []);
+      setBookings(bkRes.data || []);
     } catch (err) {
       console.error("Failed to load data", err);
+      alert(`Error loading equipment: ${err.response?.data?.message || err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadData(); }, [user]);
+  useEffect(() => { 
+    loadData(); 
+  }, [user, isAdminOrStaff]);
+  
+  useEffect(() => {
+    // Reload equipment when page becomes visible
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        console.log("Page visible - reloading equipment...");
+        loadData();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+  
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQ(q.trim()), 300);
     return () => clearTimeout(timer);
@@ -70,8 +88,12 @@ export default function Equipment() {
 
   // Filtering Equipment
   const filteredEquipment = useMemo(() => {
+    console.log("Filtering equipment, total:", equipmentList.length, "search:", debouncedQ);
     if (!debouncedQ) return equipmentList;
-    return equipmentList.filter(e => e.name.toLowerCase().includes(debouncedQ.toLowerCase()) || e.sportCategory.toLowerCase().includes(debouncedQ.toLowerCase()));
+    return equipmentList.filter(e => 
+      (e.name && e.name.toLowerCase().includes(debouncedQ.toLowerCase())) || 
+      (e.sportCategory && e.sportCategory.toLowerCase().includes(debouncedQ.toLowerCase()))
+    );
   }, [equipmentList, debouncedQ]);
 
   // ---- Admin Equipment Management ----
@@ -101,13 +123,18 @@ export default function Equipment() {
       setSubmittingEquip(true);
       if (editingEquip) {
         await api.put(`/equipment/${editingEquip._id}`, equipForm);
+        alert(`✅ Equipment "${equipForm.name}" updated successfully!`);
       } else {
         await api.post("/equipment", equipForm);
+        alert(`✅ Equipment "${equipForm.name}" added successfully! Now visible to students.`);
       }
       setOpenEquipModal(false);
       loadData();
     } catch (e) {
-      setEquipError(e.response?.data?.message || "Failed to save equipment");
+      const errorMsg = e.response?.data?.message || "Failed to save equipment";
+      setEquipError(errorMsg);
+      alert(`❌ Error: ${errorMsg}`);
+      console.error("Save equipment error:", e);
     } finally {
       setSubmittingEquip(false);
     }
@@ -188,21 +215,23 @@ export default function Equipment() {
       {/* Equipment List */}
       <div className="mb-10">
         <h2 className="text-2xl font-black text-white mb-6">Available Inventory</h2>
-        {loading ? <Loading /> : filteredEquipment.length === 0 ? <EmptyState title="No equipment found" /> : (
+        {loading ? <Loading /> : filteredEquipment.length === 0 ? <EmptyState title={equipmentList.length === 0 ? "No equipment added yet" : "No equipment found"} /> : (
           <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredEquipment.map(eq => {
-              const capPercent = eq.totalQuantity > 0 ? (eq.availableQuantity / eq.totalQuantity) * 100 : 0;
+              const totalQty = eq.totalQuantity || 0;
+              const availQty = eq.availableQuantity || 0;
+              const capPercent = totalQty > 0 ? (availQty / totalQty) * 100 : 0;
               return (
                 <Card key={eq._id} className="group sports-card-dark rounded-[32px] overflow-hidden p-6 flex flex-col h-full hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all">
                   <div className="flex-1">
-                    <h3 className="text-xl font-black text-white tracking-tight break-words">{eq.name}</h3>
-                    <p className="text-xs text-blue-400 font-bold uppercase tracking-wider mb-2">{eq.sportCategory}</p>
+                    <h3 className="text-xl font-black text-white tracking-tight break-words">{eq.name || "Unnamed"}</h3>
+                    <p className="text-xs text-blue-400 font-bold uppercase tracking-wider mb-2">{eq.sportCategory || "N/A"}</p>
                     {eq.description && <p className="text-sm text-slate-400 mb-4 line-clamp-2">{eq.description}</p>}
                     
                     <div className="mb-6">
                       <div className="flex justify-between items-end mb-2">
                          <span className="text-[10px] font-black uppercase text-slate-500">Stock</span>
-                         <span className="text-sm font-black text-white">{eq.availableQuantity} <span className="text-slate-500">/ {eq.totalQuantity}</span></span>
+                         <span className="text-sm font-black text-white">{availQty} <span className="text-slate-500">/ {totalQty}</span></span>
                       </div>
                       <div className="w-full bg-white/5 rounded-full h-2">
                         <div className={`h-full rounded-full ${capPercent <= 20 ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${capPercent}%` }} />
@@ -212,8 +241,8 @@ export default function Equipment() {
 
                   <div className="mt-auto space-y-3 pt-4 border-t border-white/5">
                     {isStudent && (
-                      <Button className="w-full bg-blue-600 font-black rounded-xl" onClick={() => onBookEquipment(eq)} disabled={eq.availableQuantity < 1}>
-                        {eq.availableQuantity < 1 ? "Out of Stock" : "Book Now"}
+                      <Button className="w-full bg-blue-600 font-black rounded-xl" onClick={() => onBookEquipment(eq)} disabled={availQty < 1}>
+                        {availQty < 1 ? "Out of Stock" : "Book Now"}
                       </Button>
                     )}
                     {isAdminOrStaff && (
