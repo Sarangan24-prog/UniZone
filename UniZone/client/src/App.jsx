@@ -24,9 +24,9 @@ import NotFound from "./pages/NotFound";
 export default function App() {
   const [loading, setLoading] = useState(true);
 
-if (loading) {
-  return <Splash onFinish={() => setLoading(false)} />;
-}
+  if (loading) {
+    return <Splash onFinish={() => setLoading(false)} />;
+  }
   return (
     <AuthProvider>
       <BrowserRouter>
@@ -39,7 +39,7 @@ if (loading) {
 
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/courses" element={<ProtectedRoute><CourseManagement /></ProtectedRoute>} />
-              
+
               <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
               <Route path="/sports" element={<ProtectedRoute><Sports /></ProtectedRoute>} />
               <Route path="/sports/equipment" element={<ProtectedRoute><Equipment /></ProtectedRoute>} />

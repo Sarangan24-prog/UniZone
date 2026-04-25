@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const Sport = require('../models/Sport');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 // Get all sports
 router.get('/', authenticate, async (req, res) => {
@@ -60,6 +62,25 @@ router.post('/:id/join', authenticate, authorize('student', 'admin', 'staff'), a
     }
     sport.players.push(req.user._id);
     await sport.save();
+
+    // Create notifications for all admin/staff
+    try {
+      const admins = await User.find({ role: { $in: ['admin', 'staff'] } });
+      const notificationPromises = admins.map(admin => {
+        return Notification.create({
+          recipient: admin._id,
+          sender: req.user._id,
+          type: 'JoinSport',
+          message: `${req.user.name} has joined the sport: ${sport.name}`,
+          relatedId: sport._id
+        });
+      });
+      await Promise.all(notificationPromises);
+    } catch (notifyError) {
+      console.error('Failed to create join notifications:', notifyError);
+      // Don't fail the join action if notifications fail
+    }
+
     const updated = await Sport.findById(req.params.id).populate('players', 'name email');
     res.json(updated);
   } catch (error) {

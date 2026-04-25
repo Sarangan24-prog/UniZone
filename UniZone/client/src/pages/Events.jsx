@@ -129,13 +129,11 @@ export default function Events() {
       setErr("");
       setFieldErrors({});
       const payload = { ...form, dateTime: new Date(form.dateTime) };
-
       if (editing) {
         await api.put(`/events/${editing._id}`, payload);
       } else {
         await api.post("/events", payload);
       }
-
       alert("Event saved successfully");
       setOpen(false);
       load();

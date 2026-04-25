@@ -2,7 +2,7 @@
   "name": "unizone",
   "version": "1.0.0",
   "description": "UniZone is a full-stack MERN (MongoDB, Express, React, Node.js) application for university management. It features role-based access control (Admin, Staff, Student) and modules for Courses, Events, Sports, and Service Requests.",
-  "main": "test_api_v2.js",
+  "main": "index.js",
   "directories": {
     "doc": "docs"
   },
@@ -14,6 +14,8 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "@playwright/test": "^1.59.1"
+    "@playwright/test": "^1.59.1",
+    "playwright": "^1.59.1",
+    "playwright-core": "^1.59.1"
   }
 }

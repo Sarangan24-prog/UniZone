@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
-    port: 5174,
-    strictPort: true,  // fail loudly if 5174 is taken instead of silently switching
-  },
+    port: 5173,
+    strictPort: true,
+  }
 })
