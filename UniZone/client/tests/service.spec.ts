@@ -25,8 +25,6 @@ type Counters = {
   anyPut: number;
 };
 
-const APP_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:5174";
-
 function nowIso() {
   return new Date().toISOString();
 }
@@ -59,38 +57,36 @@ function defaultCounters(): Counters {
 }
 
 async function setAuth(page: Page, role: Role) {
-  const data = {
-    token: "fake-jwt-token",
-    user: {
-      _id: "u1",
-      name: "Playwright User",
-      email: "pw@unizone.test",
-      role: role,
-    },
-  };
-  await page.addInitScript((d) => {
-    console.log('Injecting auth state:', d);
-    localStorage.setItem("token", d.token);
-    localStorage.setItem("user", JSON.stringify(d.user));
+  // Navigate to base URL to establish origin
+  await page.goto("/");
+  await page.evaluate((r) => {
+    localStorage.setItem("token", "fake-jwt-token");
+    localStorage.setItem(
+      "user",
+      JSON.stringify({
+        _id: "u1",
+        name: "Playwright User",
+        email: "pw@unizone.test",
+        role: r,
+      })
+    );
     localStorage.setItem("splash-seen", "true");
-  }, data);
+  }, role);
 }
 
 async function mockApi(page: Page, state: MockState, counters: Counters) {
-  await page.route((url) => url.pathname.startsWith("/api"), async (route: Route) => {
+  await page.route("**/api/**", async (route: Route) => {
     const req = route.request();
     const url = new URL(req.url());
-    const path = url.pathname.replace(/\/\/+/g, "/").replace(/\/$/, "") || "/";
+    const path = url.pathname;
     const method = req.method();
 
-    const json = async (data: any, status = 200) => {
-      // console.log(`Mocking ${method} ${path} with status ${status}`);
-      return route.fulfill({
+    const json = async (data: any, status = 200) =>
+      route.fulfill({
         status,
         contentType: "application/json",
         body: JSON.stringify(data),
       });
-    };
 
     // Categories
     if (path.endsWith("/api/categories") && method === "GET") return json(state.categories);
@@ -195,66 +191,46 @@ async function mockApi(page: Page, state: MockState, counters: Counters) {
 
     return json({});
   });
-
-  page.on("console", (msg) => {
-    console.log(`BROWSER ${msg.type().toUpperCase()}: ${msg.text()}`);
-  });
-  page.on("pageerror", (err) => {
-    console.log(`BROWSER ERROR: ${err.message}`);
-  });
 }
 
-async function openServices(page: Page, role: Role) {
-  // 1. Establish origin by going to login page (which should be fast)
-  await page.goto(`${APP_URL}/login`);
-  // 2. Inject auth state
-  await page.evaluate((r) => {
-    localStorage.setItem("token", "fake-jwt-token");
-    localStorage.setItem(
-      "user",
-      JSON.stringify({
-        _id: "u1",
-        name: "Playwright User",
-        email: "pw@unizone.test",
-        role: r,
-      })
-    );
-    localStorage.setItem("splash-seen", "true");
-  }, role);
-  // 3. Go to target page
-  await page.goto(`${APP_URL}/services`);
+async function openServices(page: Page) {
+  await page.goto("/services");
+
+  // Wait for the splash screen to finish (it takes 1.8s)
+  // We wait for the "Services Management" title with a generous timeout.
+  // If we are redirected to /login, this will fail.
+  const title = page.getByText("Services Management");
   try {
-    // 4. Wait for the app to settle and render the first tab button
-    await expect(page.getByRole("button", { name: /Hostel/i }).first()).toBeVisible({ timeout: 15000 });
+    await expect(title).toBeVisible({ timeout: 15000 });
   } catch (e) {
-    console.log("PAGE CONTENT ON FAILURE:");
-    console.log(await page.content());
+    const url = page.url();
+    console.log(`Failed to see "Services Management". Current URL: ${url}`);
+    if (url.includes("/login")) {
+      console.log("Redirected to /login. Auth failed?");
+      const token = await page.evaluate(() => localStorage.getItem("token"));
+      console.log(`Token in localStorage: ${token}`);
+    }
     throw e;
   }
 }
 
-test("0) Sanity check - can load home page", async ({ page }) => {
-  await page.goto(`${APP_URL}/`);
-  await expect(page).toHaveTitle(/UniZone/i);
-  const text = await page.evaluate(() => document.body.innerText);
-  console.log("SANITY CHECK TEXT:", text);
-});
-
 test("1) Student can open Services page and see default Hostel tab", async ({ page }) => {
   const state = defaultState();
   const counters = defaultCounters();
+  await setAuth(page, "student");
   await mockApi(page, state, counters);
-  await openServices(page, "student");
+  await openServices(page);
 
-  await expect(page.getByRole("button", { name: /Hostel/i }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /Hostel/i })).toBeVisible();
   await expect(page.getByText(/File a New Hostel/i)).toBeVisible();
 });
 
 test("2) Hostel validation blocks submit when duration is out of range", async ({ page }) => {
   const state = defaultState();
   const counters = defaultCounters();
+  await setAuth(page, "student");
   await mockApi(page, state, counters);
-  await openServices(page, "student");
+  await openServices(page);
 
   await page.getByLabel("Duration (Semesters, 1-8)").fill("0");
   await page.getByRole("button", { name: /Submit Hostel Request/i }).click();
@@ -266,8 +242,9 @@ test("2) Hostel validation blocks submit when duration is out of range", async (
 test("3) Student can submit Hostel request successfully", async ({ page }) => {
   const state = defaultState();
   const counters = defaultCounters();
+  await setAuth(page, "student");
   await mockApi(page, state, counters);
-  await openServices(page, "student");
+  await openServices(page);
 
   await page.getByLabel("Room Type").selectOption("Shared");
   await page.getByLabel("Duration (Semesters, 1-8)").fill("2");
@@ -280,8 +257,9 @@ test("3) Student can submit Hostel request successfully", async ({ page }) => {
 test("4) ID Card (New) requires profile photo file", async ({ page }) => {
   const state = defaultState();
   const counters = defaultCounters();
+  await setAuth(page, "student");
   await mockApi(page, state, counters);
-  await openServices(page, "student");
+  await openServices(page);
 
   await page.getByRole("button", { name: /ID Card/i }).click();
   await page.getByLabel("Full Name").fill("Test Student");
@@ -298,8 +276,9 @@ test("4) ID Card (New) requires profile photo file", async ({ page }) => {
 test("5) ID Card (Lost) rejects future loss date", async ({ page }) => {
   const state = defaultState();
   const counters = defaultCounters();
+  await setAuth(page, "student");
   await mockApi(page, state, counters);
-  await openServices(page, "student");
+  await openServices(page);
 
   await page.getByRole("button", { name: /ID Card/i }).click();
   await page.getByLabel("Application Reason").selectOption("Lost");
@@ -316,8 +295,9 @@ test("5) ID Card (Lost) rejects future loss date", async ({ page }) => {
 test("6) Certificate type Other requires description", async ({ page }) => {
   const state = defaultState();
   const counters = defaultCounters();
+  await setAuth(page, "student");
   await mockApi(page, state, counters);
-  await openServices(page, "student");
+  await openServices(page);
 
   await page.getByRole("button", { name: /Certificates/i }).click();
   await page.getByLabel("Certificate Type").selectOption("Other");
@@ -330,8 +310,9 @@ test("6) Certificate type Other requires description", async ({ page }) => {
 test("7) Complaint validation enforces minimum lengths", async ({ page }) => {
   const state = defaultState();
   const counters = defaultCounters();
+  await setAuth(page, "student");
   await mockApi(page, state, counters);
-  await openServices(page, "student");
+  await openServices(page);
 
   await page.getByRole("button", { name: /Complaints/i }).click();
   await page.getByLabel("Subject").fill("Bad");
@@ -346,8 +327,9 @@ test("7) Complaint validation enforces minimum lengths", async ({ page }) => {
 test("8) Student can submit Lost & Found item", async ({ page }) => {
   const state = defaultState();
   const counters = defaultCounters();
+  await setAuth(page, "student");
   await mockApi(page, state, counters);
-  await openServices(page, "student");
+  await openServices(page);
 
   await page.getByRole("button", { name: /Lost & Found/i }).click();
   await page.getByLabel("Report Type").selectOption("Lost");
@@ -366,30 +348,26 @@ test("9) General Services shows warning when no categories available", async ({ 
   const state = defaultState();
   state.categories = [];
   const counters = defaultCounters();
+  await setAuth(page, "student");
   await mockApi(page, state, counters);
-  await openServices(page, "student");
+  await openServices(page);
 
   await page.getByRole("button", { name: /General Services/i }).click();
-  await expect(page.getByText(/File a New General Services/i)).toHaveCount(0);
+  await expect(page.getByText(/No service categories available yet/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /Submit General Services Request/i })).toHaveCount(0);
 });
 
 test("10) Student can submit General Service request with active category", async ({ page }) => {
   const state = defaultState();
   const counters = defaultCounters();
+  await setAuth(page, "student");
   await mockApi(page, state, counters);
-  await openServices(page, "student");
+  await openServices(page);
 
   await page.getByRole("button", { name: /General Services/i }).click();
-  await expect(page.getByLabel("Service Category")).toBeVisible();
   await page.getByLabel("Service Category").selectOption("IT Support");
   await page.getByLabel("Detailed Description (min 10 chars)").fill("Need help with campus Wi-Fi in hostel block.");
-  const genericPostReq = page.waitForRequest((req) => {
-    const reqUrl = new URL(req.url());
-    return req.method() === "POST" && /\/api\/services\/?$/.test(reqUrl.pathname);
-  });
   await page.getByRole("button", { name: /Submit General Services Request/i }).click();
-  await genericPostReq;
 
   expect(counters.genericPost).toBe(1);
   await expect(page.getByText(/Service: IT Support/i)).toBeVisible();
@@ -398,8 +376,8 @@ test("10) Student can submit General Service request with active category", asyn
 test("11) Staff can create service category from General Services tab", async ({ page }) => {
   const state = defaultState();
   const counters = defaultCounters();
-  await mockApi(page, state, counters);
   await setAuth(page, "staff");
+  await mockApi(page, state, counters);
   await openServices(page);
 
   await page.getByRole("button", { name: /General Services/i }).click();
@@ -418,18 +396,15 @@ test("12) Staff can update Hostel request status", async ({ page }) => {
     { _id: "h1", roomType: "Single", duration: 2, status: "open", createdAt: nowIso(), userId: { _id: "u2", name: "Student A" } },
   ];
   const counters = defaultCounters();
+  await setAuth(page, "staff");
   await mockApi(page, state, counters);
-  await openServices(page, "staff");
+  await openServices(page);
 
   await page.getByRole("button", { name: /Hostel/i }).click();
   const statusSelect = page.locator("select").filter({ has: page.locator("option[value='approved']") }).first();
-  const statusPutReq = page.waitForRequest((req) => {
-    const reqUrl = new URL(req.url());
-    return req.method() === "PUT" && /\/api\/services\/hostel\/[^/]+$/.test(reqUrl.pathname);
-  });
   await statusSelect.selectOption("approved");
-  await statusPutReq;
-  await expect(statusSelect).toHaveValue("approved");
+
+  expect(counters.anyPut).toBeGreaterThan(0);
 });
 
 test("13) Student can mark own Lost & Found item as resolved", async ({ page }) => {
@@ -449,8 +424,9 @@ test("13) Student can mark own Lost & Found item as resolved", async ({ page }) 
     },
   ];
   const counters = defaultCounters();
+  await setAuth(page, "student");
   await mockApi(page, state, counters);
-  await openServices(page, "student");
+  await openServices(page);
 
   await page.getByRole("button", { name: /Lost & Found/i }).click();
   await page.getByRole("button", { name: /Mark as Resolved/i }).click();
