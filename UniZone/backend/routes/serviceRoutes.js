@@ -3,6 +3,10 @@ const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const Service = require('../models/Service');
 const serviceController = require('../controllers/serviceController');
+const {
+  notifyAdminsOfServiceSubmission,
+  notifyStudentOfServiceStatusUpdate,
+} = require('../utils/serviceNotificationEmail');
 const multer = require('multer');
 const path = require('path');
 
@@ -55,6 +59,15 @@ router.post('/', authenticate, authorize('student'), async (req, res) => {
       ...req.body,
       userId: req.user._id
     });
+    try {
+      await notifyAdminsOfServiceSubmission({
+        serviceType: 'General Service',
+        requestDoc: service.toObject ? service.toObject() : service,
+        student: req.user,
+      });
+    } catch (emailErr) {
+      console.error('General service notification email failed:', emailErr.message);
+    }
     res.status(201).json(service);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -68,8 +81,17 @@ router.put('/:id', authenticate, authorize('admin', 'staff'), async (req, res) =
       req.params.id,
       req.body,
       { new: true, runValidators: true }
-    );
+    ).populate('userId', 'name email');
     if (!service) return res.status(404).json({ message: 'Service request not found' });
+    try {
+      await notifyStudentOfServiceStatusUpdate({
+        serviceType: 'General Service',
+        requestDoc: service.toObject ? service.toObject() : service,
+        updatedBy: req.user,
+      });
+    } catch (emailErr) {
+      console.error('General service status email failed:', emailErr.message);
+    }
     res.json(service);
   } catch (error) {
     res.status(400).json({ message: error.message });

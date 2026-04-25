@@ -21,6 +21,12 @@ const announcementSchema = new mongoose.Schema({
     enum: ['All', 'Students', 'Staff'],
     default: 'All'
   },
+  attachments: [{
+    name: String,
+    size: Number,
+    type: { type: String },
+    data: String,
+  }],
   postedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

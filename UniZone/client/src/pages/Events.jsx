@@ -8,6 +8,7 @@ import Table from "../components/Table";
 import EmptyState from "../components/EmptyState";
 import Loading from "../components/Loading";
 import TextArea from "../components/TextArea";
+import Card from "../components/Card";
 import { useAuth } from "../auth/AuthContext";
 
 const NAV_ITEMS_STUDENT = [
@@ -33,14 +34,20 @@ export default function Events() {
   const [q, setQ] = useState("");
   const [month, setMonth] = useState("all");
   const [sort, setSort] = useState("date_asc");
+  const [tab, setTab] = useState("all");
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [err, setErr] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
-  const [form, setForm] = useState({ title: "", location: "", dateTime: "", capacity: 100, description: "" });
+  const [form, setForm] = useState({
+    title: "",
+    location: "",
+    dateTime: "",
+    capacity: 100,
+    description: "",
+  });
 
-  // Ticket states — saved in localStorage so data persists between logins
   const [tickets, setTickets] = useState(() => {
     const saved = localStorage.getItem("eventTickets");
     return saved ? JSON.parse(saved) : [];
@@ -52,21 +59,26 @@ export default function Events() {
   const [adminTicketOpen, setAdminTicketOpen] = useState(false);
   const [showRegSuccess, setShowRegSuccess] = useState(false);
 
-  // Countdown timer tick
   const [tick, setTick] = useState(0);
+
   useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 1000);
+    const timer = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(timer);
   }, []);
 
   const getCountdown = (dateTime) => {
     const diff = new Date(dateTime) - new Date();
     if (diff <= 0) return { label: "🔴 Ended", color: "text-red-400" };
+
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hrs = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const secs = Math.floor((diff % (1000 * 60)) / 1000);
-    if (days > 0) return { label: `⏰ ${days}d ${hrs}h ${mins}m left`, color: "text-yellow-400" };
+
+    if (days > 0) {
+      return { label: `⏰ ${days}d ${hrs}h ${mins}m left`, color: "text-yellow-400" };
+    }
+
     return { label: `⏰ ${hrs}h ${mins}m ${secs}s left`, color: "text-green-400" };
   };
 
@@ -77,9 +89,18 @@ export default function Events() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
-  const resetForm = () => setForm({ title: "", location: "", dateTime: "", capacity: 100, description: "" });
+  const resetForm = () =>
+    setForm({
+      title: "",
+      location: "",
+      dateTime: "",
+      capacity: 100,
+      description: "",
+    });
 
   const onCreate = () => {
     resetForm();
@@ -96,7 +117,7 @@ export default function Events() {
       location: row.location || "",
       dateTime: row.dateTime ? new Date(row.dateTime).toISOString().slice(0, 16) : "",
       capacity: row.capacity || 100,
-      description: row.description || ""
+      description: row.description || "",
     });
     setErr("");
     setFieldErrors({});
@@ -108,18 +129,23 @@ export default function Events() {
       setErr("");
       setFieldErrors({});
       const payload = { ...form, dateTime: new Date(form.dateTime) };
-      if (editing) await api.put(`/events/${editing._id}`, payload);
-      else await api.post("/events", payload);
+      if (editing) {
+        await api.put(`/events/${editing._id}`, payload);
+      } else {
+        await api.post("/events", payload);
+      }
       alert("Event saved successfully");
       setOpen(false);
       load();
     } catch (e) {
       const message = e.response?.data?.message || "Save failed";
       const extractedErrors = {};
+
       if (message.includes("title:")) extractedErrors.title = "Event title is required";
       if (message.includes("location:")) extractedErrors.location = "Location is required";
       if (message.includes("dateTime:")) extractedErrors.dateTime = "Date and time is required";
       if (message.includes("capacity:")) extractedErrors.capacity = "Capacity is invalid";
+
       if (Object.keys(extractedErrors).length > 0) {
         setFieldErrors(extractedErrors);
         setErr("");
@@ -138,10 +164,23 @@ export default function Events() {
 
   const reg = async (event) => {
     const registeredCount = event.registeredUsers?.length || 0;
-    if (registeredCount >= event.capacity) { alert("Event is full"); return; }
-    const alreadyRegistered = event.registeredUsers?.some(u => u._id === user?._id);
-    if (alreadyRegistered) { alert("You are already registered"); return; }
-    if (new Date(event.dateTime) < new Date()) { alert("Event already finished"); return; }
+
+    if (registeredCount >= event.capacity) {
+      alert("Event is full");
+      return;
+    }
+
+    const alreadyRegistered = event.registeredUsers?.some((u) => u._id === user?._id);
+    if (alreadyRegistered) {
+      alert("You are already registered");
+      return;
+    }
+
+    if (new Date(event.dateTime) < new Date()) {
+      alert("Event already finished");
+      return;
+    }
+
     await api.post(`/events/${event._id}/register`);
     load();
     setShowRegSuccess(true);
@@ -149,14 +188,19 @@ export default function Events() {
   };
 
   const unreg = async (event) => {
-    const alreadyRegistered = event.registeredUsers?.some(u => u._id === user?._id);
-    if (!alreadyRegistered) { alert("You are not registered for this event"); return; }
+    const alreadyRegistered = event.registeredUsers?.some((u) => u._id === user?._id);
+
+    if (!alreadyRegistered) {
+      alert("You are not registered for this event");
+      return;
+    }
+
     if (!window.confirm("Are you sure you want to unregister?")) return;
+
     await api.post(`/events/${event._id}/unregister`);
     load();
   };
 
-  // Ticket functions
   const openTicket = (event) => {
     setTicketEvent(event);
     setTicketForm({ name: "", email: "", phone: "" });
@@ -166,10 +210,15 @@ export default function Events() {
 
   const submitTicket = () => {
     const errors = {};
+
     if (!ticketForm.name.trim()) errors.name = "Name is required";
     if (!ticketForm.email.trim()) errors.email = "Email is required";
     if (!ticketForm.phone.trim()) errors.phone = "Phone is required";
-    if (Object.keys(errors).length > 0) { setTicketErrors(errors); return; }
+
+    if (Object.keys(errors).length > 0) {
+      setTicketErrors(errors);
+      return;
+    }
 
     const newTicket = {
       id: Date.now(),
@@ -178,10 +227,10 @@ export default function Events() {
       email: ticketForm.email,
       phone: ticketForm.phone,
       status: "pending",
-      raisedAt: new Date().toLocaleString()
+      raisedAt: new Date().toLocaleString(),
     };
 
-    setTickets(prev => {
+    setTickets((prev) => {
       const updated = [...prev, newTicket];
       localStorage.setItem("eventTickets", JSON.stringify(updated));
       return updated;
@@ -192,11 +241,14 @@ export default function Events() {
   };
 
   const confirmTicket = (id) => {
-    setTickets(prev => {
-      const updated = prev.map(t => t.id === id ? { ...t, status: "confirmed" } : t);
+    setTickets((prev) => {
+      const updated = prev.map((t) =>
+        t.id === id ? { ...t, status: "confirmed" } : t
+      );
       localStorage.setItem("eventTickets", JSON.stringify(updated));
       return updated;
     });
+
     alert("✅ Ticket confirmed! Email will be sent to student.");
   };
 
@@ -204,19 +256,23 @@ export default function Events() {
 
   const filtered = useMemo(() => {
     let out = [...items];
+
     if (q.trim()) {
       const qq = q.toLowerCase();
-      out = out.filter(x =>
-        (x.title || "").toLowerCase().includes(qq) ||
-        (x.location || "").toLowerCase().includes(qq)
+      out = out.filter(
+        (x) =>
+          (x.title || "").toLowerCase().includes(qq) ||
+          (x.location || "").toLowerCase().includes(qq)
       );
     }
+
     if (month !== "all") {
-      out = out.filter(x => {
+      out = out.filter((x) => {
         const m = new Date(x.dateTime).getMonth() + 1;
         return String(m) === month;
       });
     }
+
     out.sort((a, b) => {
       if (sort === "date_asc") return new Date(a.dateTime) - new Date(b.dateTime);
       if (sort === "date_desc") return new Date(b.dateTime) - new Date(a.dateTime);
@@ -224,30 +280,49 @@ export default function Events() {
       if (sort === "title_desc") return (b.title || "").localeCompare(a.title || "");
       return 0;
     });
+
     return out;
   }, [items, q, month, sort]);
 
-  const myEvents = items.filter(x =>
-    x.registeredUsers?.some(u => u._id === user?._id)
+  const myEvents = items.filter((x) =>
+    x.registeredUsers?.some((u) => u._id === user?._id)
   );
 
-  const upcomingCount = items.filter(x => new Date(x.dateTime) > now).length;
-  const endedCount = items.filter(x => new Date(x.dateTime) <= now).length;
-  const pendingTickets = tickets.filter(t => t.status === "pending").length;
+  const upcomingCount = items.filter((x) => new Date(x.dateTime) > now).length;
+  const endedCount = items.filter((x) => new Date(x.dateTime) <= now).length;
+  const pendingTickets = tickets.filter((t) => t.status === "pending").length;
 
   const navItems = isStudent ? NAV_ITEMS_STUDENT : NAV_ITEMS_STAFF;
 
   const columns = [
     { key: "title", header: "Title" },
     { key: "location", header: "Location" },
-    { key: "dateTime", header: "Date", render: (r) => new Date(r.dateTime).toLocaleString() },
-    { key: "countdown", header: "Countdown", render: (r) => {
-      const cd = getCountdown(r.dateTime);
-      return <span className={`font-mono text-sm font-medium ${cd.color}`}>{cd.label}</span>;
-    }},
-    { key: "capacity", header: "Capacity", render: (r) => `${r.registeredUsers?.length || 0}/${r.capacity || 0}` },
     {
-      key: "actions", header: "Actions", render: (r) => (
+      key: "dateTime",
+      header: "Date",
+      render: (r) => new Date(r.dateTime).toLocaleString(),
+    },
+    {
+      key: "countdown",
+      header: "Countdown",
+      render: (r) => {
+        const cd = getCountdown(r.dateTime);
+        return (
+          <span className={`font-mono text-sm font-medium ${cd.color}`}>
+            {cd.label}
+          </span>
+        );
+      },
+    },
+    {
+      key: "capacity",
+      header: "Capacity",
+      render: (r) => `${r.registeredUsers?.length || 0}/${r.capacity || 0}`,
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      render: (r) => (
         <div className="flex flex-wrap gap-2">
           {isStudent && activeNav === "my" && (
             <div className="flex gap-2 items-center">
@@ -262,49 +337,62 @@ export default function Events() {
               </button>
             </div>
           )}
+
           {isStudent && activeNav !== "my" && (
             <>
               <Button onClick={() => reg(r)}>Register</Button>
-              <Button variant="outline" onClick={() => unreg(r)}>Unregister</Button>
+              <Button variant="outline" onClick={() => unreg(r)}>
+                Unregister
+              </Button>
             </>
           )}
+
           {isStaff && (
             <>
-              <Button variant="outline" onClick={() => onEdit(r)}>Edit</Button>
-              <Button variant="danger" onClick={() => del(r._id)}>Delete</Button>
+              <Button variant="outline" onClick={() => onEdit(r)}>
+                Edit
+              </Button>
+              <Button variant="danger" onClick={() => del(r._id)}>
+                Delete
+              </Button>
             </>
           )}
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0f2c] via-[#0d1b4b] to-[#1a0a3c] text-white">
-
-      {/* Registration Success Banner */}
       {showRegSuccess && (
         <div className="mx-8 mt-4 rounded-2xl bg-green-500 bg-opacity-20 border border-green-400 border-opacity-40 p-4 flex items-center gap-3">
           <span className="text-2xl">🎉</span>
           <div>
-            <p className="text-green-300 font-semibold">You are registered successfully!</p>
-            <p className="text-green-400 text-sm">You can now raise a ticket 🎟️ from My Registrations tab.</p>
+            <p className="text-green-300 font-semibold">
+              You are registered successfully!
+            </p>
+            <p className="text-green-400 text-sm">
+              You can now raise a ticket 🎟️ from My Registrations tab.
+            </p>
           </div>
         </div>
       )}
 
-      {/* Header */}
       <div className="px-8 pt-10 pb-6 flex items-start justify-between">
         <div>
-          <h1 className="text-5xl font-extrabold text-white tracking-tight">Event Management</h1>
-          <p className="text-blue-300 mt-2 text-lg">Manage and explore university events</p>
+          <h1 className="text-5xl font-extrabold text-white tracking-tight">
+            Event Management
+          </h1>
+          <p className="text-blue-300 mt-2 text-lg">
+            Manage and explore university events
+          </p>
         </div>
+
         <div className="flex gap-3 mt-2">
           {isStaff && (
             <>
               <button
                 onClick={() => setAdminTicketOpen(true)}
-                //className="relative px-6 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-semibold tracking-widest text-sm uppercase transition-all duration-200 shadow-lg"
                 className="relative px-6 py-3 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-semibold tracking-wide text-sm uppercase transition-all duration-200 shadow-xl"
               >
                 🎟️ TICKET REQUESTS
@@ -314,9 +402,9 @@ export default function Events() {
                   </span>
                 )}
               </button>
+
               <button
                 onClick={onCreate}
-                //className="px-6 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold tracking-widest text-sm uppercase transition-all duration-200 shadow-lg"
                 className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-blue-500 hover:to-indigo-400 text-white font-semibold tracking-wide text-sm uppercase transition-all duration-200 shadow-xl"
               >
                 + NEW EVENT
@@ -326,37 +414,38 @@ export default function Events() {
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="px-8 grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <div className="rounded-2xl border border-white border-opacity-10 bg-white bg-opacity-5 p-5 text-center backdrop-blur">
           <p className="text-3xl font-bold text-white">{items.length}</p>
           <p className="text-blue-300 text-sm mt-1">Total Events</p>
         </div>
+
         {isStudent && (
           <div className="rounded-2xl border border-white border-opacity-10 bg-white bg-opacity-5 p-5 text-center backdrop-blur">
             <p className="text-3xl font-bold text-green-400">{myEvents.length}</p>
             <p className="text-blue-300 text-sm mt-1">My Registrations</p>
           </div>
         )}
+
         <div className="rounded-2xl border border-white border-opacity-10 bg-white bg-opacity-5 p-5 text-center backdrop-blur">
           <p className="text-3xl font-bold text-yellow-400">{upcomingCount}</p>
           <p className="text-blue-300 text-sm mt-1">Upcoming</p>
         </div>
+
         <div className="rounded-2xl border border-white border-opacity-10 bg-white bg-opacity-5 p-5 text-center backdrop-blur">
           <p className="text-3xl font-bold text-red-400">{endedCount}</p>
           <p className="text-blue-300 text-sm mt-1">Ended</p>
         </div>
       </div>
 
-      {/* Main Layout */}
       <div className="px-8 pb-10 flex gap-6">
-
-        {/* Side Navigator */}
         <div className="w-56 flex-shrink-0">
           <div className="rounded-2xl bg-white bg-opacity-5 border border-white border-opacity-10 p-4 backdrop-blur">
-            <p className="text-xs font-bold text-blue-300 tracking-widest mb-4 uppercase">Event Navigator</p>
+            <p className="text-xs font-bold text-blue-300 tracking-widest mb-4 uppercase">
+              Event Navigator
+            </p>
             <div className="space-y-1">
-              {navItems.map(item => (
+              {navItems.map((item) => (
                 <button
                   key={item.key}
                   onClick={() => setActiveNav(item.key)}
@@ -374,66 +463,100 @@ export default function Events() {
           </div>
         </div>
 
-        {/* Content Area */}
         <div className="flex-1">
-
-          {/* All Events */}
           {activeNav === "all" && (
             <div className="rounded-2xl bg-white bg-opacity-5 border border-white border-opacity-10 p-6 backdrop-blur">
               <h2 className="text-xl font-bold text-white mb-4">All Events</h2>
+
               <div className="grid gap-3 sm:grid-cols-3 mb-6">
-                <Input label="Search (title/location)" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Sports day..." />
-                <Select label="Month" value={month} onChange={(e) => setMonth(e.target.value)}>
+                <Input
+                  label="Search (title/location)"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Sports day..."
+                />
+
+                <Select
+                  label="Month"
+                  value={month}
+                  onChange={(e) => setMonth(e.target.value)}
+                >
                   <option value="all">All</option>
-                  <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
-                  <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
-                  <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
-                  <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
+                  <option value="1">Jan</option>
+                  <option value="2">Feb</option>
+                  <option value="3">Mar</option>
+                  <option value="4">Apr</option>
+                  <option value="5">May</option>
+                  <option value="6">Jun</option>
+                  <option value="7">Jul</option>
+                  <option value="8">Aug</option>
+                  <option value="9">Sep</option>
+                  <option value="10">Oct</option>
+                  <option value="11">Nov</option>
+                  <option value="12">Dec</option>
                 </Select>
-                <Select label="Sort" value={sort} onChange={(e) => setSort(e.target.value)}>
+
+                <Select
+                  label="Sort"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                >
                   <option value="date_asc">Upcoming first</option>
                   <option value="date_desc">Latest first</option>
                   <option value="title_asc">Title A→Z</option>
                   <option value="title_desc">Title Z→A</option>
                 </Select>
               </div>
-              {loading ? <Loading /> : filtered.length === 0 ? (
-                <EmptyState title="No events found" subtitle="Try a different search or month filter." />
+
+              {loading ? (
+                <Loading />
+              ) : filtered.length === 0 ? (
+                <EmptyState
+                  title="No events found"
+                  subtitle="Try a different search or month filter."
+                />
               ) : (
                 <Table columns={columns} rows={filtered} />
               )}
             </div>
           )}
 
-          {/* My Registrations */}
           {activeNav === "my" && isStudent && (
             <div className="rounded-2xl bg-white bg-opacity-5 border border-white border-opacity-10 p-6 backdrop-blur">
               <h2 className="text-xl font-bold text-white mb-4">My Registrations</h2>
-              {loading ? <Loading /> : myEvents.length === 0 ? (
-                <EmptyState title="No registrations" subtitle="You have not registered for any events." />
+              {loading ? (
+                <Loading />
+              ) : myEvents.length === 0 ? (
+                <EmptyState
+                  title="No registrations"
+                  subtitle="You have not registered for any events."
+                />
               ) : (
                 <Table columns={columns} rows={myEvents} />
               )}
             </div>
           )}
 
-          {/* Event Statistics */}
           {activeNav === "stats" && (
             <div className="rounded-2xl bg-white bg-opacity-5 border border-white border-opacity-10 p-6 backdrop-blur">
               <h2 className="text-xl font-bold text-white mb-6">Event Statistics</h2>
+
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="rounded-xl bg-blue-600 bg-opacity-20 border border-blue-500 border-opacity-30 p-5">
                   <p className="text-blue-300 text-sm">Total Events</p>
                   <p className="text-4xl font-bold text-white mt-1">{items.length}</p>
                 </div>
+
                 <div className="rounded-xl bg-green-600 bg-opacity-20 border border-green-500 border-opacity-30 p-5">
                   <p className="text-green-300 text-sm">Upcoming Events</p>
                   <p className="text-4xl font-bold text-white mt-1">{upcomingCount}</p>
                 </div>
+
                 <div className="rounded-xl bg-red-600 bg-opacity-20 border border-red-500 border-opacity-30 p-5">
                   <p className="text-red-300 text-sm">Ended Events</p>
                   <p className="text-4xl font-bold text-white mt-1">{endedCount}</p>
                 </div>
+
                 {isStudent && (
                   <div className="rounded-xl bg-purple-600 bg-opacity-20 border border-purple-500 border-opacity-30 p-5">
                     <p className="text-purple-300 text-sm">My Registrations</p>
@@ -441,19 +564,32 @@ export default function Events() {
                   </div>
                 )}
               </div>
+
               <h3 className="text-white font-semibold mb-3">All Events Status</h3>
+
               <div className="space-y-2">
-                {items.map(ev => {
+                {items.map((ev) => {
                   const cd = getCountdown(ev.dateTime);
+
                   return (
-                    <div key={ev._id} className="flex items-center justify-between rounded-xl bg-white bg-opacity-5 px-4 py-3">
+                    <div
+                      key={ev._id}
+                      className="flex items-center justify-between rounded-xl bg-white bg-opacity-5 px-4 py-3"
+                    >
                       <div>
                         <p className="text-white font-medium">{ev.title}</p>
-                        <p className="text-blue-300 text-xs">{ev.location} — {new Date(ev.dateTime).toLocaleDateString()}</p>
+                        <p className="text-blue-300 text-xs">
+                          {ev.location} — {new Date(ev.dateTime).toLocaleDateString()}
+                        </p>
                       </div>
+
                       <div className="flex items-center gap-3">
-                        <span className="text-blue-300 text-sm">{ev.registeredUsers?.length || 0}/{ev.capacity}</span>
-                        <span className={`font-mono text-xs font-medium ${cd.color}`}>{cd.label}</span>
+                        <span className="text-blue-300 text-sm">
+                          {ev.registeredUsers?.length || 0}/{ev.capacity}
+                        </span>
+                        <span className={`font-mono text-xs font-medium ${cd.color}`}>
+                          {cd.label}
+                        </span>
                       </div>
                     </div>
                   );
@@ -461,101 +597,194 @@ export default function Events() {
               </div>
             </div>
           )}
-
         </div>
       </div>
 
-      {/* Create/Edit Event Modal */}
       <Modal
         open={open}
         title={editing ? "Edit Event" : "Create Event"}
         onClose={() => setOpen(false)}
-        footer={(
+        footer={
           <div className="space-y-3">
-            {err && <div className="rounded-xl bg-red-50 border border-red-200 p-3"><p className="text-sm font-medium text-red-700">{err}</p></div>}
+            {err && (
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3">
+                <p className="text-sm font-medium text-red-700">{err}</p>
+              </div>
+            )}
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
               <Button onClick={save}>Save</Button>
             </div>
           </div>
-        )}
+        }
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Input label="Title" value={form.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); setFieldErrors((prev) => ({ ...prev, title: "" })); }} />
-            {fieldErrors.title && <p className="text-red-500 text-sm mt-1">{fieldErrors.title}</p>}
+            <Input
+              label="Title"
+              value={form.title}
+              onChange={(e) => {
+                setForm({ ...form, title: e.target.value });
+                setFieldErrors((prev) => ({ ...prev, title: "" }));
+              }}
+            />
+            {fieldErrors.title && (
+              <p className="text-red-500 text-sm mt-1">{fieldErrors.title}</p>
+            )}
           </div>
+
           <div>
-            <Input label="Location" value={form.location} onChange={(e) => { setForm({ ...form, location: e.target.value }); setFieldErrors((prev) => ({ ...prev, location: "" })); }} />
-            {fieldErrors.location && <p className="text-red-500 text-sm mt-1">{fieldErrors.location}</p>}
+            <Input
+              label="Location"
+              value={form.location}
+              onChange={(e) => {
+                setForm({ ...form, location: e.target.value });
+                setFieldErrors((prev) => ({ ...prev, location: "" }));
+              }}
+            />
+            {fieldErrors.location && (
+              <p className="text-red-500 text-sm mt-1">{fieldErrors.location}</p>
+            )}
           </div>
+
           <div>
-            <Input label="Date & Time" type="datetime-local" value={form.dateTime} onChange={(e) => { setForm({ ...form, dateTime: e.target.value }); setFieldErrors((prev) => ({ ...prev, dateTime: "" })); }} />
-            {fieldErrors.dateTime && <p className="text-red-500 text-sm mt-1">{fieldErrors.dateTime}</p>}
+            <Input
+              label="Date & Time"
+              type="datetime-local"
+              value={form.dateTime}
+              onChange={(e) => {
+                setForm({ ...form, dateTime: e.target.value });
+                setFieldErrors((prev) => ({ ...prev, dateTime: "" }));
+              }}
+            />
+            {fieldErrors.dateTime && (
+              <p className="text-red-500 text-sm mt-1">{fieldErrors.dateTime}</p>
+            )}
           </div>
+
           <div>
-            <Input label="Capacity" type="number" value={form.capacity} onChange={(e) => { setForm({ ...form, capacity: +e.target.value }); setFieldErrors((prev) => ({ ...prev, capacity: "" })); }} />
-            {fieldErrors.capacity && <p className="text-red-500 text-sm mt-1">{fieldErrors.capacity}</p>}
+            <Input
+              label="Capacity"
+              type="number"
+              value={form.capacity}
+              onChange={(e) => {
+                setForm({ ...form, capacity: +e.target.value });
+                setFieldErrors((prev) => ({ ...prev, capacity: "" }));
+              }}
+            />
+            {fieldErrors.capacity && (
+              <p className="text-red-500 text-sm mt-1">{fieldErrors.capacity}</p>
+            )}
           </div>
+
           <div className="sm:col-span-2">
-            <TextArea label="Description" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <TextArea
+              label="Description"
+              rows={3}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
           </div>
         </div>
       </Modal>
 
-      {/* Raise Ticket Modal - Student */}
       <Modal
         open={ticketOpen}
         title="🎟️ Raise Event Ticket"
         onClose={() => setTicketOpen(false)}
-        footer={(
+        footer={
           <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setTicketOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setTicketOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={submitTicket}>Submit Ticket</Button>
           </div>
-        )}
+        }
       >
         <div className="space-y-3">
-          <p className="text-sm text-gray-500 mb-2">Event: <strong>{ticketEvent?.title}</strong></p>
+          <p className="text-sm text-gray-500 mb-2">
+            Event: <strong>{ticketEvent?.title}</strong>
+          </p>
+
           <div>
-            <Input label="Full Name" value={ticketForm.name} onChange={(e) => { setTicketForm({ ...ticketForm, name: e.target.value }); setTicketErrors(p => ({ ...p, name: "" })); }} />
-            {ticketErrors.name && <p className="text-red-500 text-sm mt-1">{ticketErrors.name}</p>}
+            <Input
+              label="Full Name"
+              value={ticketForm.name}
+              onChange={(e) => {
+                setTicketForm({ ...ticketForm, name: e.target.value });
+                setTicketErrors((p) => ({ ...p, name: "" }));
+              }}
+            />
+            {ticketErrors.name && (
+              <p className="text-red-500 text-sm mt-1">{ticketErrors.name}</p>
+            )}
           </div>
+
           <div>
-            <Input label="Email" type="email" value={ticketForm.email} onChange={(e) => { setTicketForm({ ...ticketForm, email: e.target.value }); setTicketErrors(p => ({ ...p, email: "" })); }} />
-            {ticketErrors.email && <p className="text-red-500 text-sm mt-1">{ticketErrors.email}</p>}
+            <Input
+              label="Email"
+              type="email"
+              value={ticketForm.email}
+              onChange={(e) => {
+                setTicketForm({ ...ticketForm, email: e.target.value });
+                setTicketErrors((p) => ({ ...p, email: "" }));
+              }}
+            />
+            {ticketErrors.email && (
+              <p className="text-red-500 text-sm mt-1">{ticketErrors.email}</p>
+            )}
           </div>
+
           <div>
-            <Input label="Phone Number" type="tel" value={ticketForm.phone} onChange={(e) => { setTicketForm({ ...ticketForm, phone: e.target.value }); setTicketErrors(p => ({ ...p, phone: "" })); }} />
-            {ticketErrors.phone && <p className="text-red-500 text-sm mt-1">{ticketErrors.phone}</p>}
+            <Input
+              label="Phone Number"
+              type="tel"
+              value={ticketForm.phone}
+              onChange={(e) => {
+                setTicketForm({ ...ticketForm, phone: e.target.value });
+                setTicketErrors((p) => ({ ...p, phone: "" }));
+              }}
+            />
+            {ticketErrors.phone && (
+              <p className="text-red-500 text-sm mt-1">{ticketErrors.phone}</p>
+            )}
           </div>
         </div>
       </Modal>
 
-      {/* Admin Ticket Requests Modal */}
       <Modal
         open={adminTicketOpen}
         title="🎟️ Ticket Requests"
         onClose={() => setAdminTicketOpen(false)}
-        footer={(
+        footer={
           <div className="flex justify-end">
-            <Button variant="outline" onClick={() => setAdminTicketOpen(false)}>Close</Button>
+            <Button variant="outline" onClick={() => setAdminTicketOpen(false)}>
+              Close
+            </Button>
           </div>
-        )}
+        }
       >
         <div className="space-y-3">
           {tickets.length === 0 ? (
             <p className="text-center text-gray-400 py-6">No ticket requests yet.</p>
           ) : (
-            tickets.map(t => (
-              <div key={t.id} className="rounded-xl border border-gray-200 p-4 space-y-1">
+            tickets.map((t) => (
+              <div
+                key={t.id}
+                className="rounded-xl border border-gray-200 p-4 space-y-1"
+              >
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-semibold text-gray-800">{t.name}</p>
-                    <p className="text-sm text-gray-500">{t.email} • {t.phone}</p>
+                    <p className="text-sm text-gray-500">
+                      {t.email} • {t.phone}
+                    </p>
                     <p className="text-xs text-gray-400">Event: {t.eventTitle}</p>
                     <p className="text-xs text-gray-400">Raised: {t.raisedAt}</p>
                   </div>
+
                   <div>
                     {t.status === "pending" ? (
                       <button
